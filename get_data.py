@@ -18,7 +18,7 @@ def save_captures(url):
 		page = get_one_capture(url, d)
 		name = path + "/" + d
 		new_file = open(os.path.join(path, d), 'w')
-		new_file.write(page)
+		new_file.write(page.encode('ascii', 'ignore'))
 		new_file.close()
 
 #  given a url and timestamp, return the page content
