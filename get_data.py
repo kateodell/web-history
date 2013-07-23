@@ -12,11 +12,11 @@ def process_sites_from_file(filename):
     lines = open(filename).read().splitlines()
     for line in lines:
         print "Getting all captures from", line
-        save_captures(line)
+        get_and_save_captures(line)
 
 
 #  given a url, save all captures we want into a directory of that site's name
-def save_captures(url):
+def get_and_save_captures(url):
     dates = get_just_desired_dates(url)
 
     #  make directory (strip out http prefix and ending slash)

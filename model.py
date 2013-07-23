@@ -1,6 +1,6 @@
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
-from sqlalchemy import Column, Integer, String, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime
 from sqlalchemy.orm import relationship, backref, sessionmaker, scoped_session
 
 engine = create_engine("postgresql://localhost/webhistory", echo=True)
@@ -15,6 +15,7 @@ class Site(Base):
 
     id = Column(Integer, primary_key=True)
     url = Column(String)
+    num_captures = Column(Integer, default=0)
 
 
 class Capture(Base):
@@ -22,7 +23,7 @@ class Capture(Base):
 
     id = Column(Integer, primary_key=True)
     site_id = Column(Integer, ForeignKey('sites.id'))
-    timestamp = Column(String)
+    timestamp = Column(DateTime)
     raw_text = Column(Text)
 
     site = relationship("Site", backref=backref("sites", order_by=timestamp))
