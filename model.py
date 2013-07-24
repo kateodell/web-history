@@ -3,6 +3,9 @@ from sqlalchemy import create_engine
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime
 from sqlalchemy.orm import relationship, backref, sessionmaker, scoped_session
 
+from datetime import datetime
+from bs4 import BeautifulSoup
+
 import os
 import requests
 import json
@@ -22,12 +25,20 @@ class Site(Base):
     url = Column(String, unique=True)
 
     def add_capture(self, timestamp, raw_text):
-        c = Capture(site_id=self.id, timestamp=timestamp, raw_text=raw_text)
+        dt = datetime(year=int(timestamp[0:4]), month=int(timestamp[4:6]),
+                    day=int(timestamp[6:8]), hour=int(timestamp[8:10]),
+                    minute=int(timestamp[10:12]), second=int(timestamp[12:14]))
+        c = Capture(site_id=self.id, timestamp=dt, raw_text=raw_text)
         session.add(c)
         session.commit()
 
     def clear_all_captures(self):
         map(session.delete, self.captures)
+        session.commit()
+
+    def process_query_for_all_captures(self, query_function):
+        for c in self.captures:
+            query_function(c)
         session.commit()
 
 
@@ -41,6 +52,25 @@ class Capture(Base):
 
     site = relationship("Site", backref=backref("captures", order_by=timestamp, cascade="all, delete-orphan"))
     queries = relationship("Query", cascade="all, delete-orphan")
+
+    def get_soup_for_capture(self):
+        soup = BeautifulSoup(self.raw_text)
+        return soup
+
+    def process_query(self, query_name, query_function):
+        #  TODO run query, and create new query object with name/result
+        pass
+
+    def make_query_for_page_length(self):
+        page_length = len(self.raw_text)
+        q = Query(capture_id=self.id, query="page_length", result=page_length)
+        session.add(q)
+
+    def make_query_for_num_images(self):
+        soup = BeautifulSoup(self.raw_text, "lxml")
+        img_list = soup("img")
+        q = Query(capture_id=self.id, query="num_images", result=len(img_list))
+        session.add(q)
 
 
 class Query(Base):
