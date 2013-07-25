@@ -2,6 +2,7 @@
 
 env
 raw_data
+input
 
 # C extensions
 *.so

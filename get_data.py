@@ -3,6 +3,7 @@ import requests
 import shutil
 import json
 import re
+from datetime import datetime
 
 RAW_DATA = "./raw_data/"
 
@@ -16,6 +17,7 @@ def process_sites_from_file(filename):
 
 
 #  given a url, save all captures we want into a directory of that site's name
+#  TODO: should the timestamp/capture getting and creation be a method for Site?
 def get_and_save_captures(url):
     dates = get_just_desired_dates(url)
 
@@ -57,6 +59,7 @@ def delete_files_in_dir(path):
 
 
 #  given a url and timestamp, return the page content
+#  TODO: should any of this be part of the Site class?
 def get_one_capture(url, timestamp):
     print "Getting capture for timestamp:", timestamp
     request_url = build_request_url(timestamp, url)
@@ -122,3 +125,15 @@ def get_all_dates(url):
     for r in json_result[1:]:
         all_dates.append(str(r[1]))  # have to use str() to get rid of unicode u
     return all_dates
+
+def convert_timestamp_to_datetime():
+    for c in model.session.query(model.Capture).all():
+        dt = datetime.strptime(c.timestamp, '%Y-%m-%d %H:%M:%S')
+        c.captured_on = dt
+        print "converted %r to %r" % (c.timestamp, dt)
+
+#  go through queries table and update the site_id column
+def update_queries_table_with_site_id():
+    for q in model.session.query(model.Query).all():
+        if not q.site_id:
+            q.site_id = model.session.query(model.Capture).get(q.capture_id).site_id

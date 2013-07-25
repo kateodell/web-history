@@ -28,7 +28,7 @@ class Site(Base):
         dt = datetime(year=int(timestamp[0:4]), month=int(timestamp[4:6]),
                     day=int(timestamp[6:8]), hour=int(timestamp[8:10]),
                     minute=int(timestamp[10:12]), second=int(timestamp[12:14]))
-        c = Capture(site_id=self.id, timestamp=dt, raw_text=raw_text)
+        c = Capture(site_id=self.id, captured_on=dt, raw_text=raw_text)
         session.add(c)
         session.commit()
 
@@ -47,10 +47,10 @@ class Capture(Base):
 
     id = Column(Integer, primary_key=True)
     site_id = Column(Integer, ForeignKey('sites.id'))
-    timestamp = Column(DateTime)
+    captured_on = Column(DateTime)
     raw_text = Column(Text)
 
-    site = relationship("Site", backref=backref("captures", order_by=timestamp, cascade="all, delete-orphan"))
+    site = relationship("Site", backref=backref("captures", order_by=captured_on, cascade="all, delete-orphan"))
     queries = relationship("Query", cascade="all, delete-orphan")
 
     def get_soup_for_capture(self):
@@ -63,7 +63,7 @@ class Capture(Base):
 
     def make_query_for_page_length(self):
         page_length = len(self.raw_text)
-        q = Query(capture_id=self.id, query="page_length", result=page_length)
+        q = Query(capture_id=self.id, site_id=self.site_id, query="page_length", result=page_length)
         session.add(q)
 
     def make_query_for_num_images(self):
@@ -78,9 +78,10 @@ class Query(Base):
 
     id = Column(Integer, primary_key=True)
     capture_id = Column(Integer, ForeignKey('captures.id'))
+    site_id = Column(Integer, ForeignKey('sites.id'))
     query = Column(String)
     result = Column(Integer)
-    #  TODO: add site_id column
+
 
 
 #  Given a url, either add it to the sites table, or update it if it already exists
