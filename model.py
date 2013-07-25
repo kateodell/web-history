@@ -80,6 +80,7 @@ class Query(Base):
     capture_id = Column(Integer, ForeignKey('captures.id'))
     query = Column(String)
     result = Column(Integer)
+    #  TODO: add site_id column
 
 
 #  Given a url, either add it to the sites table, or update it if it already exists
