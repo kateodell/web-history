@@ -39,7 +39,13 @@ class Site(Base):
     def process_query_for_all_captures(self, query_function):
         for c in self.captures:
             query_function(c)
-        session.commit()
+
+    def get_data_for_display(self, query_name):
+        if query_name:
+            return "this is the data for", query_name
+        else:  # no query_name specified means return all data
+            return "this is ALL THE DATA!"
+        
 
 
 class Capture(Base):
@@ -69,7 +75,13 @@ class Capture(Base):
     def make_query_for_num_images(self):
         soup = BeautifulSoup(self.raw_text, "lxml")
         img_list = soup("img")
-        q = Query(capture_id=self.id, query="num_images", result=len(img_list))
+        q = Query(capture_id=self.id, site_id=self.site_id, query="num_images", result=len(img_list))
+        session.add(q)
+
+    def make_query_for_map(self):
+        soup = BeautifulSoup(self.raw_text, "lxml")
+        num_maps = len(soup("map"))
+        q = Query(capture_id=self.id, site_id=self.site_id, query="num_maps", result=num_maps)
         session.add(q)
 
 

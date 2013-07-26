@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h3>Analyzed Sites...</h3>
+<ul>
+    {% for site in urls %}
+    <li><a href="/sites/{{site}}">{{ site }}</a></li>
+    {% endfor %}
+</ul>
+
+{% endblock %}
