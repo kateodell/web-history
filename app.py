@@ -18,7 +18,7 @@ def display_sites():
 @app.route('/sites/<site_name>')
 def display_site(site_name):
     site = model.session.query(model.Site).filter_by(url=site_name).one()
-    data = site.get_data_for_display(None)
+    data = site.get_data_for_display("num_images")
     return render_template("site_data.html", site=site, data=data)
 
 @app.route('/analyze')

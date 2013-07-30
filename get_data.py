@@ -128,10 +128,10 @@ def get_all_dates(url):
         all_dates.append(str(r[1]))  # have to use str() to get rid of unicode u
     return all_dates
 
-def process_query_all_sites(query_function):
+def process_query_all_sites(query_name):
     sites = model.session.query(model.Site).all()
     for s in sites:
-        s.process_query_for_all_captures(query_function)
+        s.process_query_for_all_captures(query_name)
     model.session.commit()
 
 ## CLEAN-UP functions - below were used to clean up things in the database

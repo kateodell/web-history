@@ -6,6 +6,7 @@ from sqlalchemy.orm import relationship, backref, sessionmaker, scoped_session
 from datetime import datetime
 import time
 from bs4 import BeautifulSoup
+import json
 
 import redis
 
@@ -41,16 +42,13 @@ class Site(Base):
         for c in self.captures:
             key = str(self.id) + ":" + query_name
             x = time.mktime(c.captured_on.timetuple())
-            value = "{ 'x' : %d, 'y' : %d }" % (x, query.calculate_query(c))
+            value = "{x: %d, y: %d }" % (x, query.calculate_query(c))
             rdb.zadd(key, x, value)
 
-
-
     def get_data_for_display(self, query_name):
-        if query_name:
-            return "this is the data for", query_name
-        else:  # no query_name specified means return all data
-            return "this is ALL THE DATA!"
+        key = str(self.id) + ":" + query_name
+        data = rdb.zrange(key, 0, -1)
+        return json.dumps(data).translate(None, '"')  # return with quote marks removed
 
 
 
@@ -64,9 +62,9 @@ class Capture(Base):
 
     site = relationship("Site", backref=backref("captures", order_by=captured_on, cascade="all, delete-orphan"))
 
-    def get_soup_for_capture(self):
-        soup = BeautifulSoup(self.raw_text)
-        return soup
+    # def get_soup_for_capture(self):
+    #     soup = BeautifulSoup(self.raw_text)
+    #     return soup
 
     def process_one_query(self, query_name):
         #  TODO add to redis
@@ -82,11 +80,13 @@ class Capture(Base):
 
 
 
+
+
 class Query(Base):
     __tablename__ = "queries"
 
     id = Column(Integer, primary_key=True)
-    name = Column(String)       # short variableized vesion of name, used for getting calc function
+    name = Column(String, unique=True)       # short variableized vesion of name, used for getting calc function
     long_name = Column(String)  # print-friendly version of query name
 
     # runs the correct calculate function for this query for the given capture
@@ -105,11 +105,26 @@ class Query(Base):
         #TODO need to add to redis
         return len(img_list)
 
-    def calculate_map(self, capture):
+    def calculate_num_maps(self, capture):
         soup = BeautifulSoup(capture.raw_text, "lxml")
         num_maps = len(soup("map"))
         #TODO need to add to redis
         return num_maps
+
+    #  will wipe any aggregate data currently stored for query (if any), and reaggregate 
+    def aggregate_for_all_sites(self):
+        keys = rdb.keys ('*:'+self.name) 
+        for k in keys:  # go through all sites
+            
+
+    #  will create (or reinitialize) aggregate data for this query
+    def initialize_aggregate(self):
+        key_base = "all:" + self.name + ":"
+        for year in range(1996, 2014):
+
+            key = key_base + str(i)
+            rdb.hmset(key, )
+
 
 
 
