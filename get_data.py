@@ -39,7 +39,7 @@ def get_and_save_captures(url):
             print "deleting existing captures and replacing with new ones."
             delete_files_in_dir(path)
 
-    site = model.add_or_refresh_site(url)
+    site = model.add_or_refresh_site(dir_name)
 
     #  loop through all dates, get the capture, and save in new directory
     for d in dates:
@@ -73,6 +73,8 @@ def get_one_capture(url, timestamp):
                 request_url = "http://web.archive.org" + redirect
             elif re.search(r'^http://(www.)?archive\.org/web/', redirect):
                 request_url = request_url # TODO look up proper way to jump to end of if/else
+            elif re.search(r'^/.*', redirect):
+                request_url = build_request_url(timestamp, url + redirect)
             else:
                 request_url = build_request_url(timestamp, redirect)
             result = requests.get(request_url, allow_redirects=False)
@@ -125,6 +127,21 @@ def get_all_dates(url):
     for r in json_result[1:]:
         all_dates.append(str(r[1]))  # have to use str() to get rid of unicode u
     return all_dates
+
+def process_query_all_sites(query_name):
+    sites = model.session.query(model.Site).all()
+    for s in sites:
+        s.process_query_for_all_captures(query_name)
+    model.session.commit()
+
+## CLEAN-UP functions - below were used to clean up things in the database
+
+def clean_url_no_http():
+    for s in model.session.query(model.Site).all():
+        new_url = re.match('^https?://(.*)/?$', s.url)
+        if new_url:
+            s.url = new_url.group(1)
+    model.session.commit()
 
 def convert_timestamp_to_datetime():
     for c in model.session.query(model.Capture).all():
