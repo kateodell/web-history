@@ -23,13 +23,14 @@ def display_site(site_name):
 
 @app.route('/analyze')
 def display_all_queries():
-     
-     return render_template("analyze.html")
+     queries = model.session.query(model.Query).all()
+     return render_template("analyze.html", queries=queries)
 
 @app.route('/analyze/<query_name>')
 def display_query(query_name):
-    data = "this is some data about", query_name # need to get real data
-    return render_template("query_data.html", name=query_name, data=data)
+    query = model.session.query(model.Query).filter_by(name=query_name).one()
+    data = query.get_aggregate_data()
+    return render_template("query_data.html", query=query, data=data)
 
 
 

@@ -42,13 +42,17 @@ class Site(Base):
         for c in self.captures:
             key = str(self.id) + ":" + query_name
             x = time.mktime(c.captured_on.timetuple())
-            value = "{x: %d, y: %d }" % (x, query.calculate_query(c))
-            rdb.zadd(key, x, value)
+            y = query.calculate_query(c)
+            rdb.zadd(key, x, y)
 
     def get_data_for_display(self, query_name):
         key = str(self.id) + ":" + query_name
-        data = rdb.zrange(key, 0, -1)
-        return json.dumps(data).translate(None, '"')  # return with quote marks removed
+        data = rdb.zrange(key, 0, -1, withscores=True)
+        json_data = []
+        for coord in data:
+            json_data.append("{x: %s, y: %s }" % (coord[1], coord[0]))
+        # TODO: make this return less hacky (is there a way?)
+        return json.dumps(json_data).translate(None, '"')  # return with quote marks removed
 
 
 
@@ -111,19 +115,50 @@ class Query(Base):
         #TODO need to add to redis
         return num_maps
 
-    #  will wipe any aggregate data currently stored for query (if any), and reaggregate 
+    #  will wipe any aggregate data currently stored for query (if any), and reaggregate
     def aggregate_for_all_sites(self):
-        keys = rdb.keys ('*:'+self.name) 
+        keys = rdb.keys('*:'+self.name)
         for k in keys:  # go through all sites
-            
+            # go through all coordinates
+            # use hincrby to add each coordinate to the correct aggretate hash
+            for coord in rdb.zrange(k, 0, -1, withscores=True): 
+                value = int(coord[0])
+                quarter, year = self.get_quarter_and_year(int(coord[1]))
+                aggr_key = "all:" + self.name + ":" + str(year)
+                rdb.hincrby(aggr_key, str(quarter)+"_sum", value)
+                rdb.hincrby(aggr_key, str(quarter)+"_count")
 
-    #  will create (or reinitialize) aggregate data for this query
-    def initialize_aggregate(self):
-        key_base = "all:" + self.name + ":"
-        for year in range(1996, 2014):
+    def get_aggregate_data(self):
+        json_data = []
+        keys = rdb.keys('all:'+self.name+":*")
+        x = 0
+        for year in range(1996,2014):
+            k = 'all:' + self.name + ":" + str(year)
+            for q in "1234":
+                q_sum = rdb.hget(k, q+"_sum")
+                q_count = rdb.hget(k, q+"_count")
+                if x == 44:
+                    print "when x is 44, k is %s, q is %r, q_count is %r" % (k, q, q_count)
+                if q_count:  # only add a data point if there is a count
+                    avg = int(q_sum)/float(q_count)
+                    json_data.append("{x: %s, y: %s }" % (x, avg))
+                else:
+                    print "not appending when k is %s, q is %r, q_count is %r" % (k, q, q_count)
+                x += 1
+        #  TODO: make the below line less hacky (better way to remove the quotes?)
+        return json.dumps(json_data).translate(None, '"')  # return with quote marks removed
 
-            key = key_base + str(i)
-            rdb.hmset(key, )
+    def get_quarter_and_year(self, date):
+        date = datetime.fromtimestamp(date)
+        quarter = (date.month-1)/3 + 1
+        return (quarter, date.year)
+
+    #  will reset aggregate data for this query
+    def reset_aggregate(self):
+        key_base = "all:" + self.name + ":*"
+        for key in rdb.keys(pattern=key_base):
+            rdb.delete(key)
+            # need to finish
 
 
 

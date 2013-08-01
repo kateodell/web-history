@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h3>Things that were analyzed...</h3>
+<ul>
+    {% for q in queries %}
+    <li><a href="/analyze/{{q.name}}">{{ q.long_name }}</a></li>
+    {% endfor %}
+</ul>
+
+{% endblock %}
