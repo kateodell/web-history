@@ -1,5 +1,6 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 import model
+import json
 
 app = Flask(__name__)
 
@@ -32,6 +33,28 @@ def display_query(query_name):
     data = query.get_aggregate_data()
     return render_template("query_data.html", query=query, data=data)
 
+@app.route('/api')
+def get_api_data():
+    url = request.args.get("site")
+    query_name = request.args.get("query")
+    # TODO add ability to specify a result format (avg, median, % that contain, etc)
+    #result = request.args.get("result")
+
+    if not query_name:
+        return "ERROR - you must specify a query"
+    query = model.session.query(model.Query).filter_by(name=query_name).first()
+    if not query:
+            return "ERROR - that query name does not exist"
+
+    #  if a specific url is given, return the desired query data for that one site
+    if url and url != "all":
+        site = model.session.query(model.Site).filter_by(url=url).first()
+        if not site:
+            return "ERROR - that url does not exist"
+        else:
+            return site.get_data_for_display(query.name)
+    else:  #if no site is specified, or "all" is specified as site, return aggregate data
+        return json.dumps([{ 'data' : query.get_aggregate_data(), 'name':query.long_name }])
 
 
 if __name__ == "__main__":

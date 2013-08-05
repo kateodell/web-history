@@ -1,12 +1,42 @@
 {% extends "base.html" %}
 
-{% block content %}
+{% block head %}
+    <link type="text/css" rel="stylesheet" href="/static/css/rickshaw/graph.css">
+    <link type="text/css" rel="stylesheet" href="/static/css/rickshaw/detail.css">
+    <link type="text/css" rel="stylesheet" href="/static/css/rickshaw/legend.css">
 
-<h3>Things that were analyzed...</h3>
-<ul>
-    {% for q in queries %}
-    <li><a href="/analyze/{{q.name}}">{{ q.long_name }}</a></li>
-    {% endfor %}
-</ul>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.1/jquery.min.js"></script>
+    <script src="/static/js/d3.v2.js"></script>
+
+    <script src="/static/js/rickshaw.js"></script>
+
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+<div class="row-fluid">
+    <h3>Things that were analyzed...</h3>
+
+    <div class="span3">
+        <div class="well sidebar-nav">
+            <ul class="nav nav-list">
+                {% set selected = queries[0] %}
+                {% for q in queries %}
+                    <li{% if q == selected %} class="active"{% endif %}><a href="/analyze/{{q.name}}">{{ q.long_name }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    <div class="span8">
+        {% include "render_graph.html" %}
+        <script>
+            var selected_name = "{{ selected.name }}";
+            var selected_long_name = "{{ selected.long_name }}";
+        </script>
+        <script src="/static/js/render_graph.js"></script>
+
+    </div>
+</div>
+</div>
 
 {% endblock %}
