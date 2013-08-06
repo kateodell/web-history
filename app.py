@@ -7,7 +7,6 @@ app = Flask(__name__)
 @app.route('/')
 def index():
     sites = model.session.query(model.Site).all()
-    print "length of sites is ", len(sites)
     return render_template("index.html", sites=sites)
 
 @app.route('/sites')
@@ -19,8 +18,9 @@ def display_sites():
 @app.route('/sites/<site_name>')
 def display_site(site_name):
     site = model.session.query(model.Site).filter_by(url=site_name).one()
-    data = site.get_data_for_display("num_images")
-    return render_template("site_data.html", site=site, data=data)
+    #data = site.get_data_for_display("num_images")
+    queries = model.session.query(model.Query).all()
+    return render_template("site_data.html", site=site, queries=queries)#, data=data)
 
 @app.route('/analyze')
 def display_all_queries():
@@ -30,8 +30,8 @@ def display_all_queries():
 @app.route('/analyze/<query_name>')
 def display_query(query_name):
     query = model.session.query(model.Query).filter_by(name=query_name).one()
-    data = query.get_aggregate_data()
-    return render_template("query_data.html", query=query, data=data)
+    # data = query.get_aggregate_data()
+    return render_template("query_data.html", query=query)#, data=data)
 
 @app.route('/api')
 def get_api_data():
@@ -40,6 +40,7 @@ def get_api_data():
     # TODO add ability to specify a result format (avg, median, % that contain, etc)
     #result = request.args.get("result")
 
+    # Error handling
     if not query_name:
         return "ERROR - you must specify a query"
     query = model.session.query(model.Query).filter_by(name=query_name).first()
@@ -52,7 +53,7 @@ def get_api_data():
         if not site:
             return "ERROR - that url does not exist"
         else:
-            return site.get_data_for_display(query.name)
+            return json.dumps([{'data':site.get_data_for_display(query.name), 'name':query.long_name }])
     else:  #if no site is specified, or "all" is specified as site, return aggregate data
         return json.dumps([{ 'data' : query.get_aggregate_data(), 'name':query.long_name, 'aggr_format':query.aggr_format }])
 

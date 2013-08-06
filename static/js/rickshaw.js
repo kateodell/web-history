@@ -1065,7 +1065,7 @@ Rickshaw.Graph.Ajax = Rickshaw.Class.create( {
 
 		data = this.onData(data);
 		this.args.series = this._splice({ data: data, series: this.args.series });
-        console.log(this.graph)
+        
 		this.graph = this.graph || new Rickshaw.Graph(this.args);
 		this.graph.render();
 

@@ -9,6 +9,7 @@
     <script src="/static/js/d3.v2.js"></script>
 
     <script src="/static/js/rickshaw.js"></script>
+    <script src="/static/js/render_graph.js"></script>
 
 {% endblock %}
 
@@ -29,15 +30,15 @@
             </ul>
         </div>
     </div>
-    <div class="span8">
-        {% include "render_graph.html" %}
-        <script>
-            var selected_name = "{{ selected.name }}";
-            var selected_long_name = "{{ selected.long_name }}";
-        </script>
-        <script src="/static/js/render_graph.js"></script>
-
-    </div>
+    {% for query in queries %}
+        <div class="span8">
+            {% include "render_graph.html" %}
+            <script>
+                var api_parameters = "query={{ query.name }}";
+                var queryGraph = render_graph("{{ query.name }}", "{{ query.long_name }}", api_parameters, true)
+            </script>
+        </div>
+    {% endfor %}
 </div>
 </div>
 

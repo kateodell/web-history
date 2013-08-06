@@ -46,12 +46,13 @@ class Site(Base):
 
     def get_data_for_display(self, query_name):
         key = str(self.id) + ":" + query_name
-        data = rdb.zrange(key, 0, -1, withscores=True)
+        data = rdb.hgetall(key)
+        dates = sorted(map(int, data.keys()))
         json_data = []
-        for coord in data:
-            json_data.append("{x: %s, y: %s }" % (coord[1], coord[0]))
+        for coord in dates:
+            json_data.append({'x': int(coord), 'y': int(data[str(coord)]) })
         # TODO: make this return less hacky (is there a way?)
-        return json.dumps(json_data).translate(None, '"')  # return with quote marks removed
+        return json_data  # return with quote marks removed
 
 
 
@@ -65,6 +66,12 @@ class Capture(Base):
 
     site = relationship("Site", backref=backref("captures", order_by=captured_on, cascade="all, delete-orphan"))
 
+    def process_all_queries(self):
+        soup = BeautifulSoup(capture.raw_text, "lxml")
+        queries = session.query(Query).all()
+        for q in queries:
+            q.calculate_query(self, soup)
+
     # def get_soup_for_capture(self):
     #     soup = BeautifulSoup(self.raw_text)
     #     return soup
@@ -76,10 +83,7 @@ class Capture(Base):
     #     x = time.mktime(c.captured_on.timetuple())
     #     y = query.calculate_query(c)
 
-    # def process_all_queries(self):
-    #     queries = session.query(Query).all()
-    #     for q in queries:
-    #         q.calculate_query(self)
+
 
 
 
@@ -100,14 +104,18 @@ class Query(Base):
         for c in captures:
             self.calculate_query(c)
         session.commit()
+        # run aggregate calculation after adding new site data
+        self.aggregate_for_all_sites()
 
     # runs the correct calculate function for this query for the given capture
-    def calculate_query(self, capture):
+    def calculate_query(self, capture, soup):
         calc_function = getattr(self, "calculate_%s" % self.name)
         key = str(capture.site_id) + ":" + self.name
-        x = time.mktime(capture.captured_on.timetuple())
-        y = calc_function(capture)
-        rdb.zadd(key, x, y)
+        if not soup:
+            soup = BeautifulSoup(capture.raw_text, "lxml")
+        x = int(time.mktime(capture.captured_on.timetuple()))
+        y = calc_function(capture, soup)  # TODO: should probably change calc_function to not need capture
+        rdb.hset(key, x, y)
         return y
 
     #  ---- CALCULATE FUNCTIONS -----
@@ -115,13 +123,11 @@ class Query(Base):
         page_length = len(capture.raw_text)
         return page_length
 
-    def calculate_num_images(self, capture):
-        soup = BeautifulSoup(capture.raw_text, "lxml")
+    def calculate_num_images(self, capture, soup):
         img_list = soup("img")
         return len(img_list)
 
-    def calculate_num_maps(self, capture):
-        soup = BeautifulSoup(capture.raw_text, "lxml")
+    def calculate_num_maps(self, capture, soup):
         num_maps = len(soup("map"))
         return num_maps
 
@@ -129,13 +135,15 @@ class Query(Base):
 
     #  will wipe any aggregate data currently stored for query (if any), and reaggregate
     def aggregate_for_all_sites(self):
+        self.reset_aggregate()
         keys = rdb.keys('*:'+self.name)
         for k in keys:  # go through all sites
             # go through all captures (aka coordinates)
             # use hincrby to add each coordinate to the correct aggretate hash
-            for coord in rdb.zrange(k, 0, -1, withscores=True):
-                value = int(coord[0])
-                quarter, year = self.get_quarter_and_year(int(coord[1]))
+            coords = rdb.hgetall(k)
+            for timestamp in coords.iterkeys():
+                value = int(coords[timestamp])
+                quarter, year = self.get_quarter_and_year(int(timestamp))
                 aggr_key = "all:" + self.name + ":" + str(year)
                 rdb.hincrby(aggr_key, str(quarter)+"_sum", value)
                 if value > 0:
@@ -164,7 +172,7 @@ class Query(Base):
                         q_has_one = rdb.hget(k, q+"_has_one")
                         if not q_has_one:
                             q_has_one = 0
-                        percent = int(q_has_one)/float(q_count)
+                        percent = 100 * int(q_has_one)/float(q_count)
                         json_data.append({'x':x, 'y':percent})
                 x += 1
         return json_data
