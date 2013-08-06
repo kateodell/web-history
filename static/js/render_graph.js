@@ -1,4 +1,4 @@
-new Rickshaw.Graph.Ajax( {
+var ajaxGraph = new Rickshaw.Graph.Ajax( {
 
     element: document.getElementById("chart"),
     height: 250,
@@ -42,18 +42,15 @@ new Rickshaw.Graph.Ajax( {
             legend: legend
         } );
 
-        var axes = new Rickshaw.Graph.Axis.Time( {
-            graph: graph
-        } );
 
-        // var x_ticks = new Rickshaw.Graph.Axis.X( {
-        //     graph: graph,
-        //     orientation: 'bottom',
-        //     element: document.getElementById('x_axis'),
-        //     pixelsPerTick: width/68,
-        //     ticks: 68,
-        //     tickFormat: format
-        // } );
+        var x_ticks = new Rickshaw.Graph.Axis.X( {
+            graph: graph,
+            orientation: 'bottom',
+            element: document.getElementById('x_axis'),
+            // pixelsPerTick: 100/17,
+            //ticks: 18,
+            tickFormat: format
+        } );
 
         // var y_axis = new Rickshaw.Graph.Axis.Y( {
         //     graph: graph,
@@ -61,6 +58,9 @@ new Rickshaw.Graph.Ajax( {
         //     tickFormat: Rickshaw.Fixtures.Number.formatKMBT,
         //     element: document.getElementById('y_axis')
         // } );
+
+        x_ticks.graph.update();
+
     },
     series: [
         {
@@ -69,3 +69,11 @@ new Rickshaw.Graph.Ajax( {
         }
     ]
 } );
+
+// $('.refresh').on('click', function(event){
+//     selected_name = $(this).attr('id');
+//     console.log("changed selected_name to " + selected_name)
+//     ajaxGraph.dataURL = '/api?query='+ selected_name;
+//     ajaxGraph.request();
+//     return false;
+// });

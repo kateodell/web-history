@@ -42,7 +42,7 @@ class Site(Base):
             key = str(self.id) + ":" + query.name
             x = time.mktime(c.captured_on.timetuple())
             y = query.calculate_query(c)
-            rdb.zadd(key, x, y)
+            #rdb.zadd(key, x, y)
 
     def get_data_for_display(self, query_name):
         key = str(self.id) + ":" + query_name
@@ -72,9 +72,9 @@ class Capture(Base):
 
 # TODO: make sure i dont need the below 2 functions anymore.
     # def process_one_query(self, query_name):
-    #     #  TODO add to redis
-    #     query = session.query(Query).filter_by(name=query_name).one()
-    #     return query.calculate_query(self)
+    #     key = str(self.id) + ":" + query.name
+    #     x = time.mktime(c.captured_on.timetuple())
+    #     y = query.calculate_query(c)
 
     # def process_all_queries(self):
     #     queries = session.query(Query).all()
@@ -96,15 +96,19 @@ class Query(Base):
     aggr_format = Column(String) # TODO: should this be something else? enum?
 
     def run_query_on_all_sites(self):
-        sites = session.query(Site).all()
-        for s in sites:
-            s.process_query_for_all_captures(self)
+        captures = session.query(Capture).all()
+        for c in captures:
+            self.calculate_query(c)
         session.commit()
 
     # runs the correct calculate function for this query for the given capture
     def calculate_query(self, capture):
         calc_function = getattr(self, "calculate_%s" % self.name)
-        return calc_function(capture)
+        key = str(capture.site_id) + ":" + self.name
+        x = time.mktime(capture.captured_on.timetuple())
+        y = calc_function(capture)
+        rdb.zadd(key, x, y)
+        return y
 
     #  ---- CALCULATE FUNCTIONS -----
     def calculate_page_length(self, capture):
@@ -129,31 +133,39 @@ class Query(Base):
         for k in keys:  # go through all sites
             # go through all captures (aka coordinates)
             # use hincrby to add each coordinate to the correct aggretate hash
-            for coord in rdb.zrange(k, 0, -1, withscores=True): 
+            for coord in rdb.zrange(k, 0, -1, withscores=True):
                 value = int(coord[0])
                 quarter, year = self.get_quarter_and_year(int(coord[1]))
                 aggr_key = "all:" + self.name + ":" + str(year)
                 rdb.hincrby(aggr_key, str(quarter)+"_sum", value)
+                if value > 0:
+                    rdb.hincrby(aggr_key, str(quarter)+"_has_one")
                 rdb.hincrby(aggr_key, str(quarter)+"_count")
 
     #  returns the aggregated data
     #  method parameter specifies how to aggregate (avg, percent_contains, etc.)
     #  TODO: should i be using map? reduce?
     def get_aggregate_data(self, method="avg"):
+        if self.aggr_format == "Percent of Sites that Contain":
+            method = "percent_contains"
         json_data = []
         keys = rdb.keys('all:'+self.name+":*")
         x = 0
         for year in range(1996,2014): #  TODO probably shouldn't hardcode these years...globals?
             k = 'all:' + self.name + ":" + str(year)
             for q in "1234":
-                q_sum = rdb.hget(k, q+"_sum")
                 q_count = rdb.hget(k, q+"_count")
                 if q_count:  # only add a data point if there is a count
                     if method == "avg":
+                        q_sum = rdb.hget(k, q+"_sum")
                         avg = int(q_sum)/float(q_count)
                         json_data.append({'x':x, 'y':avg})
                     elif method == "percent_contains":
-
+                        q_has_one = rdb.hget(k, q+"_has_one")
+                        if not q_has_one:
+                            q_has_one = 0
+                        percent = int(q_has_one)/float(q_count)
+                        json_data.append({'x':x, 'y':percent})
                 x += 1
         return json_data
 
@@ -169,9 +181,6 @@ class Query(Base):
         for key in rdb.keys(pattern=key_base):
             rdb.delete(key)
             # TODO needs to be finished
-
-
-
 
 
 #  Given a url, either add it to the sites table, or update it if it already exists

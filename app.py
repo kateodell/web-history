@@ -54,7 +54,7 @@ def get_api_data():
         else:
             return site.get_data_for_display(query.name)
     else:  #if no site is specified, or "all" is specified as site, return aggregate data
-        return json.dumps([{ 'data' : query.get_aggregate_data(), 'name':query.long_name }])
+        return json.dumps([{ 'data' : query.get_aggregate_data(), 'name':query.long_name, 'aggr_format':query.aggr_format }])
 
 
 if __name__ == "__main__":

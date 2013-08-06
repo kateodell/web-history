@@ -1065,7 +1065,7 @@ Rickshaw.Graph.Ajax = Rickshaw.Class.create( {
 
 		data = this.onData(data);
 		this.args.series = this._splice({ data: data, series: this.args.series });
-
+        console.log(this.graph)
 		this.graph = this.graph || new Rickshaw.Graph(this.args);
 		this.graph.render();
 
@@ -1823,7 +1823,7 @@ Rickshaw.Graph.HoverDetail = Rickshaw.Class.create({
 	},
 
 	formatter: function(series, x, y, formattedX, formattedY, d) {
-		return series.name + ':&nbsp;' + formattedY;
+		return formattedX + "<br>" + series.name + ':&nbsp;' + formattedY;
 	},
 
 	update: function(e) {
@@ -1948,11 +1948,12 @@ Rickshaw.Graph.HoverDetail = Rickshaw.Class.create({
 		this.element.innerHTML = '';
 		this.element.style.left = graph.x(point.value.x) + 'px';
 
-		var xLabel = document.createElement('div');
+        // CHANGED BY KATE: removing the xlabel element (changed the item so that it displays there)
+		// var xLabel = document.createElement('div');
 
-		xLabel.className = 'x_label';
-		xLabel.innerHTML = formattedXValue;
-		this.element.appendChild(xLabel);
+		// xLabel.className = 'x_label';
+		// xLabel.innerHTML = formattedXValue;
+		// this.element.appendChild(xLabel);
 
 		var item = document.createElement('div');
 
