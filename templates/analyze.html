@@ -24,8 +24,8 @@
             <ul class="nav nav-list">
                 {% set selected = queries[0] %}
                 {% for q in queries %}
-                    <li{% if q == selected %} class="active"{% endif %}>
-                        <a class="graph_selector" id="{{q.name}}" href="#{{q.name}}">{{ q.long_name }}</a>
+                    <li class="graph_selector{% if q == selected %} active{% endif %}" id="{{q.name}}">
+                        <a  href="#{{q.name}}">{{ q.long_name }}</a>
                         <!-- <a class="refresh" id="{{q.name}}" href="/analyze/{{q.name}}">{{ q.long_name }}</a> -->
                     </li>
                 {% endfor %}
@@ -50,6 +50,8 @@
         // Show selected div, hide the others
         $(".graph_selector").click(function () {
             $(".history_chart").hide();
+            $(".active").removeClass("active");
+            $(this).addClass("active");
             $("#chart_container_" + $(this).attr("id")).show();
         });
     </script>

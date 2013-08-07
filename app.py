@@ -4,34 +4,38 @@ import json
 
 app = Flask(__name__)
 
+
 @app.route('/')
 def index():
     sites = model.session.query(model.Site).all()
     return render_template("index.html", sites=sites)
 
+
 @app.route('/sites')
 def display_sites():
-     sites = model.session.query(model.Site).all()
-     urls = [s.url for s in sites]
-     return render_template("sites.html", urls=urls)
+    sites = model.session.query(model.Site).all()
+    urls = [s.url for s in sites]
+    return render_template("sites.html", urls=urls)
+
 
 @app.route('/sites/<site_name>')
 def display_site(site_name):
     site = model.session.query(model.Site).filter_by(url=site_name).one()
-    #data = site.get_data_for_display("num_images")
     queries = model.session.query(model.Query).all()
-    return render_template("site_data.html", site=site, queries=queries)#, data=data)
+    return render_template("site_data.html", site=site, queries=queries)
+
 
 @app.route('/analyze')
 def display_all_queries():
-     queries = model.session.query(model.Query).all()
-     return render_template("analyze.html", queries=queries)
+    queries = model.session.query(model.Query).all()
+    return render_template("analyze.html", queries=queries)
+
 
 @app.route('/analyze/<query_name>')
 def display_query(query_name):
     query = model.session.query(model.Query).filter_by(name=query_name).one()
-    # data = query.get_aggregate_data()
-    return render_template("query_data.html", query=query)#, data=data)
+    return render_template("query_data.html", query=query)
+
 
 @app.route('/api')
 def get_api_data():
@@ -45,17 +49,19 @@ def get_api_data():
         return "ERROR - you must specify a query"
     query = model.session.query(model.Query).filter_by(name=query_name).first()
     if not query:
-            return "ERROR - that query name does not exist"
+            return "ERROR - that query name does not exist", 400
 
     #  if a specific url is given, return the desired query data for that one site
     if url and url != "all":
         site = model.session.query(model.Site).filter_by(url=url).first()
         if not site:
-            return "ERROR - that url does not exist"
+            return "ERROR - there is no data yet for that url"
         else:
-            return json.dumps([{'data':site.get_data_for_display(query.name), 'name':query.long_name }, { 'data' : query.get_aggregate_data(x_unit="date"), 'name':"All Sites", 'aggr_format':query.aggr_format }])
-    else:  #if no site is specified, or "all" is specified as site, return aggregate data
-        return json.dumps([{ 'data' : query.get_aggregate_data(), 'name':query.long_name, 'aggr_format':query.aggr_format }])
+            site_data = {'data':site.get_data_for_display(query.name), 'name':query.long_name }
+            aggr_data = { 'data' : query.get_aggregate_data(method="avg", x_unit="date"), 'name':"All Sites", 'aggr_format':query.aggr_format }
+            return json.dumps([site_data, aggr_data])
+    else:  # if no site is specified, or "all" is specified as site, return aggregate data
+        return json.dumps([{ 'data' : query.get_aggregate_data(), 'name':query.long_name, 'aggr_format':query.aggr_format}])
 
 
 if __name__ == "__main__":

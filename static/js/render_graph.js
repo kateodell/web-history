@@ -1,6 +1,7 @@
 function render_graph(selected_name, selected_long_name, api_parameters, aggregate){
+    var ajaxGraph
     if(aggregate){
-    var ajaxGraph = new Rickshaw.Graph.Ajax( {
+        ajaxGraph = new Rickshaw.Graph.Ajax( {
 
         element: document.getElementById("chart_" + selected_name),
         height: 250,
@@ -11,12 +12,11 @@ function render_graph(selected_name, selected_long_name, api_parameters, aggrega
         onComplete: function(transport) {
             var graph = transport.graph;
             var format = function(n) {
-                console.log("n is " + n);
                 return Math.floor(n/4) + 1996;
-                if (n % 4 === 0)
-                    return Math.floor(n/4) + 1996;
-                else
-                    return "";
+                // if (n % 4 === 0)
+                //     return Math.floor(n/4) + 1996;
+                // else
+                //     return "";
             };
 
             var x_format = function(n){
@@ -45,7 +45,7 @@ function render_graph(selected_name, selected_long_name, api_parameters, aggrega
                 tickFormat: format
             } );
             x_ticks.render();
-            
+           
             var legend = new Rickshaw.Graph.Legend( {
                 graph: graph,
                 element: document.getElementById('legend_' + selected_name)
@@ -66,51 +66,50 @@ function render_graph(selected_name, selected_long_name, api_parameters, aggrega
             ]
     } );
     } else {
-            var ajaxGraph = new Rickshaw.Graph.Ajax( {
+        ajaxGraph = new Rickshaw.Graph.Ajax( {
+            element: document.getElementById("chart_" + selected_name),
+            height: 250,
+            width: 700,  //TODO: figure out how to avoid hardcoding the width
+            renderer: 'unstackedarea',
+            dataURL: '/api?'+ api_parameters,
+            onData: function(d) {return d; },
+            onComplete: function(transport) {
+                var graph = transport.graph;
+                
+                var hoverDetail = new Rickshaw.Graph.HoverDetail( {
+                    graph: graph
+                } );
 
-        element: document.getElementById("chart_" + selected_name),
-        height: 250,
-        width: 700,  //TODO: figure out how to avoid hardcoding the width
-        renderer: 'unstackedarea',
-        dataURL: '/api?'+ api_parameters,
-        onData: function(d) {return d; },
-        onComplete: function(transport) {
-            var graph = transport.graph;
-            
-            var hoverDetail = new Rickshaw.Graph.HoverDetail( {
-                graph: graph
-            } );
+                var axes = new Rickshaw.Graph.Axis.Time( {
+                    graph: graph
+                } );
+                axes.render();
 
-            var axes = new Rickshaw.Graph.Axis.Time( {
-                graph: graph
-            } );
-            axes.render();
+                var legend = new Rickshaw.Graph.Legend( {
+                    graph: graph,
+                    element: document.getElementById('legend_' + selected_name)
 
-            var legend = new Rickshaw.Graph.Legend( {
-                graph: graph,
-                element: document.getElementById('legend_' + selected_name)
+                } );
 
-            } );
-
-            var shelving = new Rickshaw.Graph.Behavior.Series.Toggle( {
-                graph: graph,
-                legend: legend
-            } );
-        },
-        series:
-            [
-                {
-                    color: "rgba(70,130,180,0.6)",
-                    name: selected_long_name
-                },
-                {
-                    color: "rgba(100,100,100,0.3)",
-                    name: "All Sites"
-                }
-            ]
-    } );
+                var shelving = new Rickshaw.Graph.Behavior.Series.Toggle( {
+                    graph: graph,
+                    legend: legend
+                } );
+            },
+            series:
+                [
+                    {
+                        color: "rgba(70,130,180,0.6)",
+                        name: selected_long_name
+                    },
+                    {
+                        color: "rgba(100,100,100,0.3)",
+                        name: "All Sites"
+                    }
+                ]
+        } );
     }
 
-    return ajaxGraph
+    return ajaxGraph;
 }
 

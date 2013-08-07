@@ -6,18 +6,17 @@ from sqlalchemy.orm import relationship, backref, sessionmaker, scoped_session
 from datetime import datetime
 import time
 from bs4 import BeautifulSoup
-import json
-
 import redis
 
 rdb = redis.StrictRedis(host="localhost", port=6379, db=0)
 
 engine = create_engine("postgresql://localhost/webhistory")
 session = scoped_session(sessionmaker(bind=engine,
-                                    autocommit=False,
-                                    autoflush=False))
+                                        autocommit=False,
+                                        autoflush=False))
 Base = declarative_base()
 Base.query = session.query_property()
+
 
 class Site(Base):
     __tablename__ = "sites"
@@ -27,8 +26,8 @@ class Site(Base):
 
     def add_capture(self, timestamp, raw_text):
         dt = datetime(year=int(timestamp[0:4]), month=int(timestamp[4:6]),
-                    day=int(timestamp[6:8]), hour=int(timestamp[8:10]),
-                    minute=int(timestamp[10:12]), second=int(timestamp[12:14]))
+                        day=int(timestamp[6:8]), hour=int(timestamp[8:10]),
+                        minute=int(timestamp[10:12]), second=int(timestamp[12:14]))
         c = Capture(site_id=self.id, captured_on=dt, raw_text=raw_text)
         session.add(c)
         session.commit()
@@ -39,10 +38,8 @@ class Site(Base):
 
     def process_query_for_all_captures(self, query):
         for c in self.captures:
-            key = str(self.id) + ":" + query.name
             x = time.mktime(c.captured_on.timetuple())
             y = query.calculate_query(c)
-            #rdb.zadd(key, x, y)
 
     def get_data_for_display(self, query_name):
         key = str(self.id) + ":" + query_name
@@ -50,10 +47,8 @@ class Site(Base):
         dates = sorted(map(int, data.keys()))
         json_data = []
         for coord in dates:
-            json_data.append({'x': int(coord), 'y': int(data[str(coord)]) })
-        # TODO: make this return less hacky (is there a way?)
-        return json_data  # return with quote marks removed
-
+            json_data.append({'x': int(coord), 'y': int(data[str(coord)])})
+        return json_data
 
 
 class Capture(Base):
@@ -67,7 +62,7 @@ class Capture(Base):
     site = relationship("Site", backref=backref("captures", order_by=captured_on, cascade="all, delete-orphan"))
 
     def process_all_queries(self):
-        soup = BeautifulSoup(capture.raw_text, "lxml")
+        soup = BeautifulSoup(self.raw_text, "lxml")
         queries = session.query(Query).all()
         for q in queries:
             q.calculate_query(self, soup)
@@ -90,7 +85,7 @@ class Query(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True)       # short variableized vesion of name, used for getting calc function
     long_name = Column(String)  # print-friendly version of query name
-    aggr_format = Column(String) # TODO: should this be something else? enum?
+    aggr_format = Column(String)  # TODO: should this be something else? enum?
 
     def run_query_on_all_sites(self):
         captures = session.query(Capture).all()
@@ -101,7 +96,7 @@ class Query(Base):
         self.aggregate_for_all_sites()
 
     # runs the correct calculate function for this query for the given capture
-    def calculate_query(self, capture, soup):
+    def calculate_query(self, capture, soup=None):
         calc_function = getattr(self, "calculate_%s" % self.name)
         key = str(capture.site_id) + ":" + self.name
         if not soup:
@@ -123,6 +118,10 @@ class Query(Base):
     def calculate_num_maps(self, capture, soup):
         num_maps = len(soup("map"))
         return num_maps
+
+    def calculate_blink_tag(self, capture, soup):
+        num_blink = len(soup("blink"))
+        return num_blink
 
     #  ----- END CALCULATE FUNCTIONS -----
 
@@ -146,13 +145,15 @@ class Query(Base):
     #  returns the aggregated data
     #  method parameter specifies how to aggregate (avg, percent_contains, etc.)
     #  TODO: should i be using map? reduce?
-    def get_aggregate_data(self, method="avg", x_unit="quarter"):
-        if self.aggr_format == "Percent of Sites that Contain":
-            method = "percent_contains"
+    def get_aggregate_data(self, method=None, x_unit="quarter"):
+        if method == None:
+            if self.aggr_format == "Percent of Sites that Contain":
+                method = "percent_contains"
+            else:
+                method = "avg"
         json_data = []
-        keys = rdb.keys('all:'+self.name+":*")
         x = 0
-        for year in range(1996,2014): #  TODO probably shouldn't hardcode these years...globals?
+        for year in range(1996,2014):  #  TODO probably shouldn't hardcode these years...globals?
             k = 'all:' + self.name + ":" + str(year)
             for q in "1234":
                 q_count = rdb.hget(k, q+"_count")
@@ -161,19 +162,18 @@ class Query(Base):
                         q_sum = rdb.hget(k, q+"_sum")
                         avg = int(q_sum)/float(q_count)
                         if (x_unit == "date"):
-                            x_date = int(time.mktime(datetime(1996+(x/4), 1+(x%4)*3, 1).timetuple()))
-                            json_data.append({'x':x_date, 'y':avg})
+                            x_date = int(time.mktime(datetime(1996+(x/4), 1+(x % 4)*3, 1).timetuple()))
+                            json_data.append({'x': x_date, 'y': avg})
                         else:
-                            json_data.append({'x':x, 'y':avg})
+                            json_data.append({'x': x, 'y': avg})
                     elif method == "percent_contains":
                         q_has_one = rdb.hget(k, q+"_has_one")
                         if not q_has_one:
                             q_has_one = 0
                         percent = 100 * int(q_has_one)/float(q_count)
-                        json_data.append({'x':x, 'y':percent})
+                        json_data.append({'x': x, 'y': percent})
                 x += 1
         return json_data
-
 
     def get_quarter_and_year(self, date):
         date = datetime.fromtimestamp(date)
@@ -201,6 +201,7 @@ def add_or_refresh_site(url):
         session.add(site)
     session.commit()
     return site
+
 
 #  strips off trailing slash if its there
 def clean_url(url):

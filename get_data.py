@@ -52,7 +52,6 @@ def get_and_save_captures(url):
             site.add_capture(d, page)
 
 
-
 def delete_files_in_dir(path):
     for f in os.listdir(path):
         os.remove(os.path.join(path, f))
@@ -66,13 +65,13 @@ def get_one_capture(url, timestamp):
     try:
         # print "REQUEST URL IS ", request_url
         result = requests.get(request_url, allow_redirects=False)
-        while result.status_code == 301 or result.status_code == 302: # follow the redirect
+        while result.status_code == 301 or result.status_code == 302:  # follow the redirect
             redirect = result.headers.get('Location')
             # print "REDIRECT IS", redirect
             if re.search(r'^/web/', redirect):
                 request_url = "http://web.archive.org" + redirect
             elif re.search(r'^http://(www.)?archive\.org/web/', redirect):
-                request_url = request_url # TODO look up proper way to jump to end of if/else
+                request_url = request_url  # TODO look up proper way to jump to end of if/else
             elif re.search(r'^/.*', redirect):
                 request_url = build_request_url(timestamp, url + redirect)
             else:
@@ -83,9 +82,10 @@ def get_one_capture(url, timestamp):
             return None
         # print "CAPTURE WITH STATUS", result.status_code, "FOR", request_url
         return result.text.encode('ascii', 'ignore')
-    except: # requests.exceptions.ConnectionError:
+    except:  # requests.exceptions.ConnectionError:
         print "CONNECTION ERROR, DID NOT CAPTURE", request_url, "\n\n"
         return None
+
 
 def build_request_url(timestamp, url):
     return "http://web.archive.org/web/" + timestamp + "id_/" + url
@@ -128,7 +128,9 @@ def get_all_dates(url):
         all_dates.append(str(r[1]))  # have to use str() to get rid of unicode u
     return all_dates
 
+
 ## CLEAN-UP functions - below were used to clean up things in the database
+##   NOTE: Will need to import model before running these.
 
 def clean_url_no_http():
     for s in model.session.query(model.Site).all():
@@ -137,11 +139,13 @@ def clean_url_no_http():
             s.url = new_url.group(1)
     model.session.commit()
 
+
 def convert_timestamp_to_datetime():
     for c in model.session.query(model.Capture).all():
         dt = datetime.strptime(c.timestamp, '%Y-%m-%d %H:%M:%S')
         c.captured_on = dt
         print "converted %r to %r" % (c.timestamp, dt)
+
 
 #  go through queries table and update the site_id column
 def update_queries_table_with_site_id():
