@@ -5,9 +5,12 @@
     <link type="text/css" rel="stylesheet" href="/static/css/rickshaw/detail.css">
     <link type="text/css" rel="stylesheet" href="/static/css/rickshaw/legend.css">
 
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.1/jquery.min.js"></script>
     <script src="/static/js/d3.v2.js"></script>
 
     <script src="/static/js/rickshaw.js"></script>
+    <script src="/static/js/render_graph.js"></script>
+
 
 {% endblock %}
 
@@ -15,113 +18,13 @@
 
 <h3>Overall Stats for {{ query.long_name }}</h3>
 
-<style>
-#chart {
-    position: relative;
-    left: 40px;
-    display: block;
-}
-#y_axis {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 40px;
-}
-#x_axis {
-    position: relative;
-    left: 40px;
-    height: 40px;
-}
-</style>
-
-<div id="chart_container">
-    <div id="y_axis"></div>
-    <div id="chart"></div>
-    <div id="x_axis"></div>
-    <div id="legend_container">
-        <div id="smoother" title="Smoothing"></div>
-        <div id="legend"></div>
-    </div>
-    <div id="slider"></div>
+<div class="span8">
+    {% include "render_graph.html" %}
+    <script>
+        var api_parameters = "query={{ query.name }}";
+        var queryGraph = render_graph("{{ query.name }}", "{{ query.long_name }}", api_parameters, true)
+    </script>
+    
 </div>
-
-<script>
-
-
-// instantiate our graph!
-
-
-var graph = new Rickshaw.Graph( {
-    element: document.getElementById("chart"),
-    width: 960,
-    height: 250,
-    renderer: 'area',
-    series: [
-        {
-            color: "rgba(70,130,180,0.5)",
-            data: {{ data }},
-            name: 'Avg {{ query.long_name }}'
-        }
-    ]
-} );
-
-
-var format = function(n) {
-    if (n % 4 == 0)
-        return Math.floor(n/4) + 1996;
-    else
-        return "";
-    // var year = Math.floor(n/4) + 1996
-    // var months = n % 4 
-    // var map = {
-    //     0: 'Jan-Mar ',
-    //     1: 'Mar-Jun ',
-    //     2: 'Jul-Sept ',
-    //     3: 'Oct-Dec ',
-    // };
-    // return map[months] + year;
-};
-
-var x_format = function(n){
-    var year = Math.floor(n/4) + 1996;
-    var months = n % 4 ;
-    var map = {
-        0: 'Jan-Mar ',
-        1: 'Mar-Jun ',
-        2: 'Jul-Sept ',
-        3: 'Oct-Dec ',
-    };
-    return map[months] + year;
-}
-
-
-var hoverDetail = new Rickshaw.Graph.HoverDetail( {
-    graph: graph,
-    xFormatter: x_format
-} );
-
-var legend = new Rickshaw.Graph.Legend( {
-    graph: graph,
-    element: document.getElementById('legend')
-
-} );
-
-var shelving = new Rickshaw.Graph.Behavior.Series.Toggle( {
-    graph: graph,
-    legend: legend
-} );
-
-var x_ticks = new Rickshaw.Graph.Axis.X( {
-    graph: graph,
-    orientation: 'bottom',
-    element: document.getElementById('x_axis'),
-    pixelsPerTick: 960/68,
-    tickFormat: format
-} );
-
-graph.renderer.unstack = true;
-graph.render();
-
-</script>
 
 {% endblock %}

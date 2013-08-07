@@ -37,22 +37,22 @@ class Site(Base):
         map(session.delete, self.captures)
         session.commit()
 
-    def process_query_for_all_captures(self, query_name):
-        query = session.query(Query).filter_by(name=query_name).one()
+    def process_query_for_all_captures(self, query):
         for c in self.captures:
-            key = str(self.id) + ":" + query_name
+            key = str(self.id) + ":" + query.name
             x = time.mktime(c.captured_on.timetuple())
             y = query.calculate_query(c)
-            rdb.zadd(key, x, y)
+            #rdb.zadd(key, x, y)
 
     def get_data_for_display(self, query_name):
         key = str(self.id) + ":" + query_name
-        data = rdb.zrange(key, 0, -1, withscores=True)
+        data = rdb.hgetall(key)
+        dates = sorted(map(int, data.keys()))
         json_data = []
-        for coord in data:
-            json_data.append("{x: %s, y: %s }" % (coord[1], coord[0]))
+        for coord in dates:
+            json_data.append({'x': int(coord), 'y': int(data[str(coord)]) })
         # TODO: make this return less hacky (is there a way?)
-        return json.dumps(json_data).translate(None, '"')  # return with quote marks removed
+        return json_data  # return with quote marks removed
 
 
 
@@ -66,24 +66,22 @@ class Capture(Base):
 
     site = relationship("Site", backref=backref("captures", order_by=captured_on, cascade="all, delete-orphan"))
 
+    def process_all_queries(self):
+        soup = BeautifulSoup(capture.raw_text, "lxml")
+        queries = session.query(Query).all()
+        for q in queries:
+            q.calculate_query(self, soup)
+
     # def get_soup_for_capture(self):
     #     soup = BeautifulSoup(self.raw_text)
     #     return soup
 
-    def process_one_query(self, query_name):
-        #  TODO add to redis
-        query = session.query(Query).filter_by(name=query_name).one()
-        return query.calculate_query(self)
 
-    def process_all_queries(self):
-        queries = session.query(Query).all()
-        for q in queries:
-            q.calculate_query(self)
-
-
-
-
-
+# TODO: make sure i dont need the below 2 functions anymore.
+    # def process_one_query(self, query_name):
+    #     key = str(self.id) + ":" + query.name
+    #     x = time.mktime(c.captured_on.timetuple())
+    #     y = query.calculate_query(c)
 
 
 class Query(Base):
@@ -92,61 +90,90 @@ class Query(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True)       # short variableized vesion of name, used for getting calc function
     long_name = Column(String)  # print-friendly version of query name
+    aggr_format = Column(String) # TODO: should this be something else? enum?
+
+    def run_query_on_all_sites(self):
+        captures = session.query(Capture).all()
+        for c in captures:
+            self.calculate_query(c)
+        session.commit()
+        # run aggregate calculation after adding new site data
+        self.aggregate_for_all_sites()
 
     # runs the correct calculate function for this query for the given capture
-    def calculate_query(self, capture):
+    def calculate_query(self, capture, soup):
         calc_function = getattr(self, "calculate_%s" % self.name)
-        return calc_function(capture)
+        key = str(capture.site_id) + ":" + self.name
+        if not soup:
+            soup = BeautifulSoup(capture.raw_text, "lxml")
+        x = int(time.mktime(capture.captured_on.timetuple()))
+        y = calc_function(capture, soup)  # TODO: should probably change calc_function to not need capture
+        rdb.hset(key, x, y)
+        return y
 
+    #  ---- CALCULATE FUNCTIONS -----
     def calculate_page_length(self, capture):
         page_length = len(capture.raw_text)
-        #TODO need to add to redis
         return page_length
 
-    def calculate_num_images(self, capture):
-        soup = BeautifulSoup(capture.raw_text, "lxml")
+    def calculate_num_images(self, capture, soup):
         img_list = soup("img")
-        #TODO need to add to redis
         return len(img_list)
 
-    def calculate_num_maps(self, capture):
-        soup = BeautifulSoup(capture.raw_text, "lxml")
+    def calculate_num_maps(self, capture, soup):
         num_maps = len(soup("map"))
-        #TODO need to add to redis
         return num_maps
+
+    #  ----- END CALCULATE FUNCTIONS -----
 
     #  will wipe any aggregate data currently stored for query (if any), and reaggregate
     def aggregate_for_all_sites(self):
+        self.reset_aggregate()
         keys = rdb.keys('*:'+self.name)
         for k in keys:  # go through all sites
-            # go through all coordinates
+            # go through all captures (aka coordinates)
             # use hincrby to add each coordinate to the correct aggretate hash
-            for coord in rdb.zrange(k, 0, -1, withscores=True): 
-                value = int(coord[0])
-                quarter, year = self.get_quarter_and_year(int(coord[1]))
+            coords = rdb.hgetall(k)
+            for timestamp in coords.iterkeys():
+                value = int(coords[timestamp])
+                quarter, year = self.get_quarter_and_year(int(timestamp))
                 aggr_key = "all:" + self.name + ":" + str(year)
                 rdb.hincrby(aggr_key, str(quarter)+"_sum", value)
+                if value > 0:
+                    rdb.hincrby(aggr_key, str(quarter)+"_has_one")
                 rdb.hincrby(aggr_key, str(quarter)+"_count")
 
-    def get_aggregate_data(self):
+    #  returns the aggregated data
+    #  method parameter specifies how to aggregate (avg, percent_contains, etc.)
+    #  TODO: should i be using map? reduce?
+    def get_aggregate_data(self, method="avg", x_unit="quarter"):
+        if self.aggr_format == "Percent of Sites that Contain":
+            method = "percent_contains"
         json_data = []
         keys = rdb.keys('all:'+self.name+":*")
         x = 0
-        for year in range(1996,2014):
+        for year in range(1996,2014): #  TODO probably shouldn't hardcode these years...globals?
             k = 'all:' + self.name + ":" + str(year)
             for q in "1234":
-                q_sum = rdb.hget(k, q+"_sum")
                 q_count = rdb.hget(k, q+"_count")
-                if x == 44:
-                    print "when x is 44, k is %s, q is %r, q_count is %r" % (k, q, q_count)
                 if q_count:  # only add a data point if there is a count
-                    avg = int(q_sum)/float(q_count)
-                    json_data.append("{x: %s, y: %s }" % (x, avg))
-                else:
-                    print "not appending when k is %s, q is %r, q_count is %r" % (k, q, q_count)
+                    if method == "avg":
+                        q_sum = rdb.hget(k, q+"_sum")
+                        avg = int(q_sum)/float(q_count)
+                        if (x_unit == "date"):
+                            x_date = int(time.mktime(datetime(1996+(x/4), 1+(x%4)*3, 1).timetuple()))
+                            json_data.append({'x':x_date, 'y':avg})
+                        else:
+                            json_data.append({'x':x, 'y':avg})
+                    elif method == "percent_contains":
+                        q_has_one = rdb.hget(k, q+"_has_one")
+                        if not q_has_one:
+                            q_has_one = 0
+                        percent = 100 * int(q_has_one)/float(q_count)
+                        json_data.append({'x':x, 'y':percent})
                 x += 1
-        #  TODO: make the below line less hacky (better way to remove the quotes?)
-        return json.dumps(json_data).translate(None, '"')  # return with quote marks removed
+        return json_data
+
 
     def get_quarter_and_year(self, date):
         date = datetime.fromtimestamp(date)
@@ -158,10 +185,7 @@ class Query(Base):
         key_base = "all:" + self.name + ":*"
         for key in rdb.keys(pattern=key_base):
             rdb.delete(key)
-            # need to finish
-
-
-
+            # TODO needs to be finished
 
 
 #  Given a url, either add it to the sites table, or update it if it already exists

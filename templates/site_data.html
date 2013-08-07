@@ -7,9 +7,11 @@
     <link type="text/css" rel="stylesheet" href="/static/css/rickshaw/detail.css">
     <link type="text/css" rel="stylesheet" href="/static/css/rickshaw/legend.css">
 
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.1/jquery.min.js"></script>
     <script src="/static/js/d3.v2.js"></script>
 
     <script src="/static/js/rickshaw.js"></script>
+    <script src="/static/js/render_graph.js"></script>
 
 {% endblock %}
 
@@ -18,68 +20,13 @@
 
 
 <h3>Overall Stats for {{site.url}}</h3>
-
-<div id="chart_container">
-    <div id="chart"></div>
-    <div id="legend_container">
-        <div id="smoother" title="Smoothing"></div>
-        <div id="legend"></div>
+{% for query in queries %}
+    <div class="span8">
+        {% include "render_graph.html" %}
+            <script>
+                var api_parameters = "query={{ query.name }}" + "&site={{site.url}}";
+                var siteGraph = render_graph("{{ query.name }}", "{{ query.long_name }}", api_parameters, false);
+            </script>
     </div>
-    <div id="slider"></div>
-</div>
-
-<script>
-
-// set up our data series with 50 random data points
-
-var series1 = {{ data }};
-var series2 = {{ data }};
-
-var seriesData = [ series1, series2 ];
-
-// instantiate our graph!
-
-var graph = new Rickshaw.Graph( {
-    element: document.getElementById("chart"),
-    width: 960,
-    height: 250,
-    renderer: 'area',
-    series: [
-        {
-            color: "rgba(70,130,180,0.5)",
-            data: seriesData[0],
-            name: '{{ site.url }}'
-        }, {
-            color: "rgba(202,226,247,0.5)",
-            data: seriesData[1],
-            name: 'Average for all sites'
-        }
-    ]
-} );
-
-graph.renderer.unstack = true;
-graph.render();
-
-var hoverDetail = new Rickshaw.Graph.HoverDetail( {
-    graph: graph
-} );
-
-var legend = new Rickshaw.Graph.Legend( {
-    graph: graph,
-    element: document.getElementById('legend')
-
-} );
-
-var shelving = new Rickshaw.Graph.Behavior.Series.Toggle( {
-    graph: graph,
-    legend: legend
-} );
-
-var axes = new Rickshaw.Graph.Axis.Time( {
-    graph: graph
-} );
-axes.render();
-
-</script>
-
+{% endfor %}
 {% endblock %}
