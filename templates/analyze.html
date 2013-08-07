@@ -18,27 +18,41 @@
 <div class="row-fluid">
     <h3>Things that were analyzed...</h3>
 
+    <!-- Selector Column on left side -->
     <div class="span3">
         <div class="well sidebar-nav">
             <ul class="nav nav-list">
                 {% set selected = queries[0] %}
                 {% for q in queries %}
                     <li{% if q == selected %} class="active"{% endif %}>
-                        <a class="refresh" id="{{q.name}}" href="/analyze/{{q.name}}">{{ q.long_name }}</a>
+                        <a class="graph_selector" id="{{q.name}}" href="#{{q.name}}">{{ q.long_name }}</a>
+                        <!-- <a class="refresh" id="{{q.name}}" href="/analyze/{{q.name}}">{{ q.long_name }}</a> -->
                     </li>
                 {% endfor %}
             </ul>
         </div>
     </div>
+
+    <!-- Graph Panel on right side -->
+    <div class="span8">
     {% for query in queries %}
-        <div class="span8">
             {% include "render_graph.html" %}
             <script>
                 var api_parameters = "query={{ query.name }}";
                 var queryGraph = render_graph("{{ query.name }}", "{{ query.long_name }}", api_parameters, true)
+                if({{query.name}} !== {{selected.name}}){
+                    $("div#chart_container_{{query.name}}").hide();
+                }
             </script>
-        </div>
     {% endfor %}
+    </div>
+    <script type="text/javascript">
+        // Show selected div, hide the others
+        $(".graph_selector").click(function () {
+            $(".history_chart").hide();
+            $("#chart_container_" + $(this).attr("id")).show();
+        });
+    </script>
 </div>
 </div>
 

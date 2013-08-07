@@ -84,13 +84,6 @@ class Capture(Base):
     #     y = query.calculate_query(c)
 
 
-
-
-
-
-
-
-
 class Query(Base):
     __tablename__ = "queries"
 
@@ -153,7 +146,7 @@ class Query(Base):
     #  returns the aggregated data
     #  method parameter specifies how to aggregate (avg, percent_contains, etc.)
     #  TODO: should i be using map? reduce?
-    def get_aggregate_data(self, method="avg"):
+    def get_aggregate_data(self, method="avg", x_unit="quarter"):
         if self.aggr_format == "Percent of Sites that Contain":
             method = "percent_contains"
         json_data = []
@@ -167,7 +160,11 @@ class Query(Base):
                     if method == "avg":
                         q_sum = rdb.hget(k, q+"_sum")
                         avg = int(q_sum)/float(q_count)
-                        json_data.append({'x':x, 'y':avg})
+                        if (x_unit == "date"):
+                            x_date = int(time.mktime(datetime(1996+(x/4), 1+(x%4)*3, 1).timetuple()))
+                            json_data.append({'x':x_date, 'y':avg})
+                        else:
+                            json_data.append({'x':x, 'y':avg})
                     elif method == "percent_contains":
                         q_has_one = rdb.hget(k, q+"_has_one")
                         if not q_has_one:

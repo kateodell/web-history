@@ -423,6 +423,7 @@ Rickshaw.Graph = function(args) {
 			Rickshaw.Graph.Renderer.Line,
 			Rickshaw.Graph.Renderer.Bar,
 			Rickshaw.Graph.Renderer.Area,
+            Rickshaw.Graph.Renderer.UnstackedArea,
 			Rickshaw.Graph.Renderer.ScatterPlot
 		];
 
@@ -2576,6 +2577,18 @@ Rickshaw.Graph.Renderer.Area = Rickshaw.Class.create( Rickshaw.Graph.Renderer, {
 			series.path.setAttribute('class', series.className);
 		}
 	}
+} );
+
+Rickshaw.namespace('Rickshaw.Graph.Renderer.UnstackedArea');
+Rickshaw.Graph.Renderer.UnstackedArea = Rickshaw.Class.create(Rickshaw.Graph.Renderer.Area, {
+    name: 'unstackedarea',
+    defaults: function($super) {
+        return Rickshaw.extend($super(), {
+            unstack: true,
+            fill: false,
+            stroke: false
+        });
+    }
 } );
 
 Rickshaw.namespace('Rickshaw.Graph.Renderer.ScatterPlot');
