@@ -53,7 +53,7 @@ def get_api_data():
         if not site:
             return "ERROR - that url does not exist"
         else:
-            return json.dumps([{'data':site.get_data_for_display(query.name), 'name':query.long_name }, { 'data' : query.get_aggregate_data(x_unit="date"), 'name':"All Sites", 'aggr_format':query.aggr_format }])
+            return json.dumps([{'data':site.get_data_for_display(query.name), 'name':query.long_name }, { 'data' : query.get_aggregate_data(), 'name':"All Sites", 'aggr_format':query.aggr_format }])
     else:  #if no site is specified, or "all" is specified as site, return aggregate data
         return json.dumps([{ 'data' : query.get_aggregate_data(), 'name':query.long_name, 'aggr_format':query.aggr_format }])
 
