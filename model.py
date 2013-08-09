@@ -38,8 +38,7 @@ class Site(Base):
 
     def process_query_for_all_captures(self, query):
         for c in self.captures:
-            x = time.mktime(c.captured_on.timetuple())
-            y = query.calculate_query(c)
+            query.calculate_query(c)
 
     def get_data_for_display(self, query_name):
         key = str(self.id) + ":" + query_name
@@ -67,17 +66,6 @@ class Capture(Base):
         for q in queries:
             q.calculate_query(self, soup)
 
-    # def get_soup_for_capture(self):
-    #     soup = BeautifulSoup(self.raw_text)
-    #     return soup
-
-
-# TODO: make sure i dont need the below 2 functions anymore.
-    # def process_one_query(self, query_name):
-    #     key = str(self.id) + ":" + query.name
-    #     x = time.mktime(c.captured_on.timetuple())
-    #     y = query.calculate_query(c)
-
 
 class Query(Base):
     __tablename__ = "queries"
@@ -85,7 +73,14 @@ class Query(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True)       # short variableized vesion of name, used for getting calc function
     long_name = Column(String)  # print-friendly version of query name
-    aggr_format = Column(String)  # TODO: should this be something else? enum?
+    aggr_format = Column(String) # TODO: should this be something else? enum?
+    type = Column(String)
+    tag_name = Column(String)
+
+    __mapper_args__ = {
+        'polymorphic_on': type,
+        'polymorphic_identity': 'query'
+    }
 
     def run_query_on_all_sites(self):
         captures = session.query(Capture).all()
@@ -95,98 +90,113 @@ class Query(Base):
         # run aggregate calculation after adding new site data
         self.aggregate_for_all_sites()
 
-    # runs the correct calculate function for this query for the given capture
-    def calculate_query(self, capture, soup=None):
-        calc_function = getattr(self, "calculate_%s" % self.name)
+    # takes the y value passed in and adds x,y coordinate to redis for that capture's hash
+    def calculate_query(self, capture, y):
         key = str(capture.site_id) + ":" + self.name
-        if not soup:
-            soup = BeautifulSoup(capture.raw_text, "lxml")
         x = int(time.mktime(capture.captured_on.timetuple()))
-        y = calc_function(capture, soup)  # TODO: should probably change calc_function to not need capture
         rdb.hset(key, x, y)
-        return y
 
-    #  ---- CALCULATE FUNCTIONS -----
-    def calculate_page_length(self, capture):
-        page_length = len(capture.raw_text)
-        return page_length
-
-    def calculate_num_images(self, capture, soup):
-        img_list = soup("img")
-        return len(img_list)
-
-    def calculate_num_maps(self, capture, soup):
-        num_maps = len(soup("map"))
-        return num_maps
-
-    def calculate_blink_tag(self, capture, soup):
-        num_blink = len(soup("blink"))
-        return num_blink
-
-    #  ----- END CALCULATE FUNCTIONS -----
-
-    #  will wipe any aggregate data currently stored for query (if any), and reaggregate
+    #  wipes existing aggregate data, and recalculates. default is to calculate the avg
     def aggregate_for_all_sites(self):
         self.reset_aggregate()
         keys = rdb.keys('*:'+self.name)
-        for k in keys:  # go through all sites
-            # go through all captures (aka coordinates)
-            # use hincrby to add each coordinate to the correct aggretate hash
-            coords = rdb.hgetall(k)
-            for timestamp in coords.iterkeys():
-                value = int(coords[timestamp])
-                quarter, year = self.get_quarter_and_year(int(timestamp))
-                aggr_key = "all:" + self.name + ":" + str(year)
-                rdb.hincrby(aggr_key, str(quarter)+"_sum", value)
-                if value > 0:
-                    rdb.hincrby(aggr_key, str(quarter)+"_has_one")
-                rdb.hincrby(aggr_key, str(quarter)+"_count")
+        data = map(self.map_to_date_result_pair, keys)  # list of dicts for each site w/ quarter/value pairs
+        aggr_result = self.group_by_quarter(data)  # dict with quarter/aggregated value pairs
+        for quarter in aggr_result.iterkeys():
+            rdb.hset("all:"+self.name, quarter, aggr_result[quarter])
 
-    #  returns the aggregated data
-    #  method parameter specifies how to aggregate (avg, percent_contains, etc.)
-    #  TODO: should i be using map? reduce?
-    def get_aggregate_data(self, method=None, x_unit="quarter"):
-        if method == None:
-            if self.aggr_format == "Percent of Sites that Contain":
-                method = "percent_contains"
-            else:
-                method = "avg"
-        json_data = []
-        x = 0
-        for year in range(1996,2014):  #  TODO probably shouldn't hardcode these years...globals?
-            k = 'all:' + self.name + ":" + str(year)
-            for q in "1234":
-                q_count = rdb.hget(k, q+"_count")
-                if q_count:  # only add a data point if there is a count
-                    if method == "avg":
-                        q_sum = rdb.hget(k, q+"_sum")
-                        avg = int(q_sum)/float(q_count)
-                        if (x_unit == "date"):
-                            x_date = int(time.mktime(datetime(1996+(x/4), 1+(x % 4)*3, 1).timetuple()))
-                            json_data.append({'x': x_date, 'y': avg})
-                        else:
-                            json_data.append({'x': x, 'y': avg})
-                    elif method == "percent_contains":
-                        q_has_one = rdb.hget(k, q+"_has_one")
-                        if not q_has_one:
-                            q_has_one = 0
-                        percent = 100 * int(q_has_one)/float(q_count)
-                        json_data.append({'x': x, 'y': percent})
-                x += 1
-        return json_data
+    def map_to_date_result_pair(self, site):
+        data = rdb.hgetall(site).items()  # list of timestamp/value tuples (832848234, 5)
+        data = {self.get_quarter_and_year(item[0]): float(item[1]) for item in data}  # dict of quarter/value pairs
+        return data
 
-    def get_quarter_and_year(self, date):
-        date = datetime.fromtimestamp(date)
+    # takes in list of dicts of quarter/value pairs, returns dict w/ aggregated value
+    def group_by_quarter(self, data):
+        temp = {}
+        result = {}
+        for site in data:
+            for quarter in site.iterkeys():
+                if temp.get(quarter):
+                    temp[quarter].append(site[quarter])
+                else:
+                    temp[quarter] = [site[quarter]]
+        for quarter in temp.iterkeys():
+            result[quarter] = self.calculate_aggr(temp[quarter])
+        return result
+
+
+    def get_aggregate_data(self):
+        result = []
+        key = 'all:' + self.name
+        data = rdb.hgetall(key).items()
+        for coord in data:
+            year, quarter = coord[0].split(":")
+            month = (int(quarter) % 4)*3 + 1
+            x = int(time.mktime(datetime(int(year), month, 1).timetuple()))
+            result.append({'x':x, 'y':float(coord[1])})
+        return sorted(result, key=lambda coord: coord['x'])
+
+    def get_quarter_and_year(self, date_str):
+        date = datetime.fromtimestamp(float(date_str))
         quarter = (date.month-1)/3 + 1
-        return (quarter, date.year)
+        return str(date.year) + ":" + str(quarter)
 
-    #  will reset aggregate data for this query
+    def date_from_quarter_int(self, x):
+        year = 1996+(x/4)
+        month = 1+(x%4)*3
+        return int(time.mktime(datetime(year, month, 1).timetuple()))
+
+    #  deletes all aggregate data for this query
     def reset_aggregate(self):
-        key_base = "all:" + self.name + ":*"
-        for key in rdb.keys(pattern=key_base):
-            rdb.delete(key)
-            # TODO needs to be finished
+        key = "all:" + self.name
+        rdb.delete(key)
 
+
+class CountTagQuery(Query):
+    __mapper_args__ = {
+        'polymorphic_identity': 'count_tag'
+    }
+
+    def calculate_query(self, capture, soup=None):
+        if not soup:
+            soup = BeautifulSoup(capture.raw_text, "lxml")
+        tag_list = soup(self.tag_name)
+        result = len(tag_list)
+        super(CountTagQuery, self).calculate_query(capture, result)
+
+    # takes in list of values and returns aggregated value
+    def calculate_aggr(self, data):
+        return sum(data)/len(data)
+
+class HasTagQuery(Query):
+    __mapper_args__ = {
+        'polymorphic_identity': 'has_tag'
+    }
+
+    def calculate_query(self, capture, soup=None):
+        if not soup:
+            soup = BeautifulSoup(capture.raw_text, "lxml")
+        tag_list = soup.find(self.tag_name)
+        if tag_list:
+            result = 1
+        else:
+            result = 0
+        super(HasTagQuery, self).calculate_query(capture, result)
+
+    def calculate_aggr(self, data):
+        return 100 * sum(data) / len(data)
+
+
+class LengthQuery(Query):
+    __mapper_args__ = {
+        'polymorphic_identity': 'length'
+    }
+    def calculate_query(self, capture, soup):
+        result = len(capture.raw_text)
+        super(LengthQuery, self).calculate_query(capture, result)
+
+    def calculate_aggr(self, data):
+        return sum(data)/len(data)
 
 #  Given a url, either add it to the sites table, or update it if it already exists
 def add_or_refresh_site(url):
