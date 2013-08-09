@@ -1,6 +1,7 @@
 function render_graph(selected_name, selected_long_name, api_parameters, aggregate){
+    var ajaxGraph
     if(aggregate){
-    var ajaxGraph = new Rickshaw.Graph.Ajax( {
+        ajaxGraph = new Rickshaw.Graph.Ajax( {
 
         element: document.getElementById("chart_" + selected_name),
         height: 250,
@@ -11,9 +12,8 @@ function render_graph(selected_name, selected_long_name, api_parameters, aggrega
         onComplete: function(transport) {
             var graph = transport.graph;
             var format = function(n) {
-                console.log("n is " + n);
                 return Math.floor(n/4) + 1996;
-                if (n % 4 === 0)
+                if(n % 4 === 0)
                     return Math.floor(n/4) + 1996;
                 else
                     return "";
@@ -32,20 +32,19 @@ function render_graph(selected_name, selected_long_name, api_parameters, aggrega
             };
 
             var hoverDetail = new Rickshaw.Graph.HoverDetail( {
-                graph: graph,
-                xFormatter: x_format
+                graph: graph
+                //xFormatter: x_format
             } );
 
-            var x_ticks = new Rickshaw.Graph.Axis.X( {
+            var x_ticks = new Rickshaw.Graph.Axis.Time( {
                 graph: graph,
                 orientation: 'bottom',
                 element: document.getElementById('x_axis_' + selected_name),
-                //ticks: 20,
                 timeUnit: (new Rickshaw.Fixtures.Time()).unit('year'),
-                tickFormat: format
+                //tickFormat: format
             } );
             x_ticks.render();
-            
+
             var legend = new Rickshaw.Graph.Legend( {
                 graph: graph,
                 element: document.getElementById('legend_' + selected_name)
@@ -66,7 +65,7 @@ function render_graph(selected_name, selected_long_name, api_parameters, aggrega
             ]
     } );
     } else {
-            var ajaxGraph = new Rickshaw.Graph.Ajax( {
+        ajaxGraph = new Rickshaw.Graph.Ajax( {
 
         element: document.getElementById("chart_" + selected_name),
         height: 250,
@@ -76,7 +75,7 @@ function render_graph(selected_name, selected_long_name, api_parameters, aggrega
         onData: function(d) {return d; },
         onComplete: function(transport) {
             var graph = transport.graph;
-            
+
             var hoverDetail = new Rickshaw.Graph.HoverDetail( {
                 graph: graph
             } );
@@ -111,6 +110,6 @@ function render_graph(selected_name, selected_long_name, api_parameters, aggrega
     } );
     }
 
-    return ajaxGraph
+    return ajaxGraph;
 }
 

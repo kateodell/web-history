@@ -64,21 +64,10 @@ class Capture(Base):
     site = relationship("Site", backref=backref("captures", order_by=captured_on, cascade="all, delete-orphan"))
 
     def process_all_queries(self):
-        soup = BeautifulSoup(capture.raw_text, "lxml")
+        soup = BeautifulSoup(self.raw_text, "lxml")
         queries = session.query(Query).all()
         for q in queries:
             q.calculate_query(self, soup)
-
-    # def get_soup_for_capture(self):
-    #     soup = BeautifulSoup(self.raw_text)
-    #     return soup
-
-
-# TODO: make sure i dont need the below 2 functions anymore.
-    # def process_one_query(self, query_name):
-    #     key = str(self.id) + ":" + query.name
-    #     x = time.mktime(c.captured_on.timetuple())
-    #     y = query.calculate_query(c)
 
 
 class Query(Base):
@@ -121,7 +110,7 @@ class Query(Base):
 
     def map_to_date_result_pair(self, site):
         data = rdb.hgetall(site).items()  # list of timestamp/value tuples (832848234, 5)
-        data = {self.get_quarter_and_year(int(item[0])): float(item[1]) for item in data}  # dict of quarter/value pairs
+        data = {self.get_quarter_and_year(item[0]): float(item[1]) for item in data}  # dict of quarter/value pairs
         return data
 
     # takes in list of dicts of quarter/value pairs, returns dict w/ aggregated value
@@ -138,9 +127,6 @@ class Query(Base):
             result[quarter] = self.calculate_aggr(temp[quarter])
         return result
 
-    # takes in list of values and returns aggregated value
-    def calculate_aggr(self, data):
-        return sum(data)/len(data)
 
     def get_aggregate_data(self):
         result = []
@@ -153,8 +139,8 @@ class Query(Base):
             result.append({'x':x, 'y':float(coord[1])})
         return sorted(result, key=lambda coord: coord['x'])
 
-    def get_quarter_and_year(self, date):
-        date = datetime.fromtimestamp(date)
+    def get_quarter_and_year(self, date_str):
+        date = datetime.fromtimestamp(float(date_str))
         quarter = (date.month-1)/3 + 1
         return str(date.year) + ":" + str(quarter)
 
@@ -165,9 +151,8 @@ class Query(Base):
 
     #  deletes all aggregate data for this query
     def reset_aggregate(self):
-        key_base = "all:" + self.name + ":*"
-        for key in rdb.keys(pattern=key_base):
-            rdb.delete(key)
+        key = "all:" + self.name
+        rdb.delete(key)
 
 
 class CountTagQuery(Query):
@@ -175,20 +160,23 @@ class CountTagQuery(Query):
         'polymorphic_identity': 'count_tag'
     }
 
-    def calculate_query(self, capture, soup):
+    def calculate_query(self, capture, soup=None):
         if not soup:
             soup = BeautifulSoup(capture.raw_text, "lxml")
         tag_list = soup(self.tag_name)
         result = len(tag_list)
         super(CountTagQuery, self).calculate_query(capture, result)
 
+    # takes in list of values and returns aggregated value
+    def calculate_aggr(self, data):
+        return sum(data)/len(data)
 
 class HasTagQuery(Query):
     __mapper_args__ = {
         'polymorphic_identity': 'has_tag'
     }
 
-    def calculate_query(self, capture, soup):
+    def calculate_query(self, capture, soup=None):
         if not soup:
             soup = BeautifulSoup(capture.raw_text, "lxml")
         tag_list = soup.find(self.tag_name)
@@ -210,6 +198,8 @@ class LengthQuery(Query):
         result = len(capture.raw_text)
         super(LengthQuery, self).calculate_query(capture, result)
 
+    def calculate_aggr(self, data):
+        return sum(data)/len(data)
 
 #  Given a url, either add it to the sites table, or update it if it already exists
 def add_or_refresh_site(url):

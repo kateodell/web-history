@@ -52,7 +52,6 @@ def get_and_save_captures(url):
             site.add_capture(d, page)
 
 
-
 def delete_files_in_dir(path):
     for f in os.listdir(path):
         os.remove(os.path.join(path, f))
@@ -83,9 +82,10 @@ def get_one_capture(url, timestamp):
             return None
         # print "CAPTURE WITH STATUS", result.status_code, "FOR", request_url
         return result.text.encode('ascii', 'ignore')
-    except: # requests.exceptions.ConnectionError:
+    except:  # requests.exceptions.ConnectionError:
         print "CONNECTION ERROR, DID NOT CAPTURE", request_url, "\n\n"
         return None
+
 
 def build_request_url(timestamp, url):
     return "http://web.archive.org/web/" + timestamp + "id_/" + url
