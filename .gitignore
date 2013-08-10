@@ -1,5 +1,5 @@
 *.py[cod]
-
+.DS_STORE
 env
 raw_data
 input

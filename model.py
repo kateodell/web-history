@@ -160,6 +160,18 @@ class CountTagQuery(Query):
         'polymorphic_identity': 'count_tag'
     }
 
+    def __init__(self, tag_name):
+        self.name = 'num_' + tag_name
+        self.type = 'count_tag'
+        self.long_name = 'Number of <' + tag_name + '> tags'
+        self.aggr_format = 'Average'
+        self.tag_name = tag_name
+        # #super(CountTagQuery, self).__init__(name=name, 
+        #                                     long_name=long_name, 
+        #                                     aggr_format=aggr_format,
+        #                                     tag_name=tag_name,
+        #                                     type=type)
+
     def calculate_query(self, capture, soup=None):
         if not soup:
             soup = BeautifulSoup(capture.raw_text, "lxml")
@@ -175,6 +187,13 @@ class HasTagQuery(Query):
     __mapper_args__ = {
         'polymorphic_identity': 'has_tag'
     }
+
+    def __init__(self, tag_name):
+        self.name = 'has_' + tag_name
+        self.type = 'has_tag'
+        self.long_name = 'Contain one of more <' + tag_name + '> tags'
+        self.aggr_format = 'Percent of sites that'
+        self.tag_name = tag_name    
 
     def calculate_query(self, capture, soup=None):
         if not soup:
@@ -194,12 +213,34 @@ class LengthQuery(Query):
     __mapper_args__ = {
         'polymorphic_identity': 'length'
     }
+
+    def __init__(self, tag_name):
+        self.name = 'length_' + tag_name
+        self.type = 'length'
+        self.long_name = 'Number of characters in  <' + tag_name + '> tags'
+        self.aggr_format = 'Average'
+        self.tag_name = tag_name    
+
     def calculate_query(self, capture, soup):
         result = len(capture.raw_text)
         super(LengthQuery, self).calculate_query(capture, result)
 
     def calculate_aggr(self, data):
         return sum(data)/len(data)
+
+def add_new_query(tag_name, query_type):
+    q = session.query(Query).filter_by(name=query_type+'_'+tag_name).first()
+    if q:  # if this query already existed in the db
+        return None
+    if query_type == 'num':
+        q = CountTagQuery(tag_name)
+    elif query_type == 'has':
+        q = HasTagQuery(tag_name)
+    elif query_type == 'length':
+        q = LengthQuery(tag_name)
+    session.add(q)
+    session.commit()
+    return q
 
 #  Given a url, either add it to the sites table, or update it if it already exists
 def add_or_refresh_site(url):
