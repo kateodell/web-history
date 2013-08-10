@@ -13,17 +13,10 @@ function render_graph(selected_name, selected_long_name, api_parameters, aggrega
             var graph = transport.graph;
             var format = function(n) {
                 return Math.floor(n/4) + 1996;
-<<<<<<< HEAD
                 // if (n % 4 === 0)
                 //     return Math.floor(n/4) + 1996;
                 // else
                 //     return "";
-=======
-                if(n % 4 === 0)
-                    return Math.floor(n/4) + 1996;
-                else
-                    return "";
->>>>>>> dev
             };
 
             var x_format = function(n){
@@ -51,11 +44,7 @@ function render_graph(selected_name, selected_long_name, api_parameters, aggrega
                 //tickFormat: format
             } );
             x_ticks.render();
-<<<<<<< HEAD
-           
-=======
 
->>>>>>> dev
             var legend = new Rickshaw.Graph.Legend( {
                 graph: graph,
                 element: document.getElementById('legend_' + selected_name)
@@ -77,7 +66,6 @@ function render_graph(selected_name, selected_long_name, api_parameters, aggrega
     } );
     } else {
         ajaxGraph = new Rickshaw.Graph.Ajax( {
-<<<<<<< HEAD
             element: document.getElementById("chart_" + selected_name),
             height: 250,
             width: 700,  //TODO: figure out how to avoid hardcoding the width
@@ -95,26 +83,6 @@ function render_graph(selected_name, selected_long_name, api_parameters, aggrega
                     graph: graph
                 } );
                 axes.render();
-=======
-
-        element: document.getElementById("chart_" + selected_name),
-        height: 250,
-        width: 700,  //TODO: figure out how to avoid hardcoding the width
-        renderer: 'unstackedarea',
-        dataURL: '/api?'+ api_parameters,
-        onData: function(d) {return d; },
-        onComplete: function(transport) {
-            var graph = transport.graph;
-
-            var hoverDetail = new Rickshaw.Graph.HoverDetail( {
-                graph: graph
-            } );
-
-            var axes = new Rickshaw.Graph.Axis.Time( {
-                graph: graph
-            } );
-            axes.render();
->>>>>>> dev
 
                 var legend = new Rickshaw.Graph.Legend( {
                     graph: graph,

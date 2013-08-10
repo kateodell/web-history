@@ -70,13 +70,9 @@ def get_api_data():
         if not site:
             return "ERROR - there is no data yet for that url"
         else:
-<<<<<<< HEAD
-            site_data = {'data':site.get_data_for_display(query.name), 'name':query.long_name }
-            aggr_data = { 'data' : query.get_aggregate_data(method="avg", x_unit="date"), 'name':"All Sites", 'aggr_format':query.aggr_format }
+            site_data = {'data':site.get_data_for_display(query.name), 'name':query.name, 'aggr_format':query.aggr_format}
+            aggr_data = { 'data' : query.get_aggregate_data(), 'name':"All Sites"}
             return json.dumps([site_data, aggr_data])
-=======
-            return json.dumps([{'data':site.get_data_for_display(query.name), 'name':query.long_name }, { 'data' : query.get_aggregate_data(), 'name':"All Sites", 'aggr_format':query.aggr_format}])
->>>>>>> dev
     else:  # if no site is specified, or "all" is specified as site, return aggregate data
         return json.dumps([{ 'data' : query.get_aggregate_data(), 'name':query.name, 'aggr_format':query.aggr_format}])
 

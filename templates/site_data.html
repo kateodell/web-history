@@ -22,7 +22,7 @@
 <!-- Selector Column on left side -->
 <div class="span3">
     <div class="well sidebar-nav">
-        <ul class="nav nav-list">
+        <ul class="nav nav-pills nav-stacked">
             {% set selected = queries[0] %}
             {% for q in queries %}
                 <li class="graph_selector{% if q == selected %} active{% endif %}" id="{{q.name}}">
@@ -41,7 +41,7 @@
         {% include "render_graph.html" %}
             <script>
                 var api_parameters = "query={{ query.name }}" + "&site={{site.url}}";
-                var siteGraph = render_graph("{{ query.name }}", "{{ query.long_name }}", api_parameters, false);
+                var siteGraph = render_graph("{{ query.name }}", "{{ query.name }}", api_parameters, false);
                 if({{query.name}} !== {{selected.name}}){
                     $("div#chart_container_{{query.name}}").hide();
                 }
