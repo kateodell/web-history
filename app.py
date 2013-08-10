@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect
 import model
 import json
 
@@ -37,6 +37,19 @@ def display_query(query_name):
     return render_template("query_data.html", query=query)
 
 
+@app.route('/new_query', methods=['GET','POST'])
+def new_query():
+    if request.method == 'GET':
+        return render_template("new_query.html")
+    else:  # method is POST
+        tag_name = request.form['tag_name']
+        query_type = request.form['query_type']
+        q = model.add_new_query(tag_name, query_type)
+        if q:
+            q.run_query_on_all_sites()
+            q.aggregate_for_all_sites()
+        return redirect("/analyze/"+query_type+"_"+tag_name)
+
 @app.route('/api')
 def get_api_data():
     url = request.args.get("site")
@@ -65,7 +78,7 @@ def get_api_data():
             return json.dumps([{'data':site.get_data_for_display(query.name), 'name':query.long_name }, { 'data' : query.get_aggregate_data(), 'name':"All Sites", 'aggr_format':query.aggr_format}])
 >>>>>>> dev
     else:  # if no site is specified, or "all" is specified as site, return aggregate data
-        return json.dumps([{ 'data' : query.get_aggregate_data(), 'name':query.long_name, 'aggr_format':query.aggr_format}])
+        return json.dumps([{ 'data' : query.get_aggregate_data(), 'name':query.name, 'aggr_format':query.aggr_format}])
 
 
 if __name__ == "__main__":

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<form class="form-horizontal" method="POST">
+<fieldset>
+
+<!-- Form Name -->
+<legend>Add a new query...</legend>
+
+<!-- Text input-->
+<div class="control-group">
+  <label class="control-label" for="tag_name">What tag do you want to analyze?</label>
+  <div class="controls">
+    <input id="tag_name" name="tag_name" type="text" placeholder="ex: img, form, ul, div" class="input-xlarge">
+    <p class="help-block">Note: do not put &lt; or &gt; around tag name</p>
+  </div>
+</div>
+
+<!-- Select Basic -->
+<div class="control-group">
+  <label class="control-label" for="query_type">What do you want to analyze?</label>
+  <div class="controls">
+    <select id="query_type" name="query_type" class="input-xlarge">
+      <option value="num">The average number of times this tag is used on a page</option>
+      <option value="has">The percent of sites that use this tag</option>
+      <option value="length">The character count of content inside this tag</option>
+    </select>
+  </div>
+</div>
+
+<!-- Button -->
+<div class="control-group">
+  <label class="control-label" for="singlebutton"></label>
+  <div class="controls">
+    <button id="singlebutton" name="singlebutton" class="btn btn-primary">Analyze</button>
+  </div>
+</div>
+
+</fieldset>
+</form>
+
+
+{% endblock %}
