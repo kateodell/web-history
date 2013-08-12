@@ -188,7 +188,7 @@ class HasTagQuery(Query):
     def __init__(self, tag_name):
         self.name = 'has_' + tag_name
         self.type = 'has_tag'
-        self.long_name = 'Contain one of more <' + tag_name + '> tags'
+        self.long_name = 'Contain one or more <' + tag_name + '> tag'
         self.aggr_format = 'Percent of sites that'
         self.tag_name = tag_name    
 

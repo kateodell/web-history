@@ -22,7 +22,7 @@
 <!-- Selector Column on left side -->
 <div class="span3">
     <div class="well sidebar-nav">
-        <ul class="nav nav-pills nav-stacked">
+        <ul class="nav nav-list"><!-- nav-pills nav-stacked"> -->
             {% set selected = queries[0] %}
             {% for q in queries %}
                 <li class="graph_selector{% if q == selected %} active{% endif %}" id="{{q.name}}">

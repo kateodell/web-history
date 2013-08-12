@@ -7,8 +7,8 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    sites = model.session.query(model.Site).all()
-    return render_template("index.html", sites=sites)
+    queries = model.session.query(model.Query).all()
+    return render_template("analyze.html", queries=queries)
 
 
 @app.route('/sites')
@@ -49,6 +49,10 @@ def new_query():
             q.run_query_on_all_sites()
             q.aggregate_for_all_sites()
         return redirect("/analyze/"+query_type+"_"+tag_name)
+
+@app.route('/about')
+def display_about():
+    return render_template('about.html')
 
 @app.route('/api')
 def get_api_data():

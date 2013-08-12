@@ -12,7 +12,11 @@
 <div class="control-group">
   <label class="control-label" for="tag_name">What tag do you want to analyze?</label>
   <div class="controls">
-    <input id="tag_name" name="tag_name" type="text" placeholder="ex: img, form, ul, div" class="input-xlarge">
+    <div class="input-group col-lg-2">
+      <span class="input-group-addon">&lt;</span>
+      <input id="tag_name" name="tag_name" type="text" placeholder="ex: img, form, ul, div" class="form-control">
+      <span class="input-group-addon">&gt;</span>
+    </div>
     <p class="help-block">Note: do not put &lt; or &gt; around tag name</p>
   </div>
 </div>
