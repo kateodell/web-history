@@ -5,72 +5,103 @@
     <link type="text/css" rel="stylesheet" href="/static/css/rickshaw/detail.css">
     <link type="text/css" rel="stylesheet" href="/static/css/rickshaw/legend.css">
     <link type="text/css" rel="stylesheet" href="/static/css/bootstrap-combobox.css">
-
+    <link type="text/css" rel="stylesheet" href="/static/css/webhistory.css">
 
 {% endblock %}
 
 {% block content %}
+
 <div class="container-fluid">
 <div class="row-fluid">
-    <h1>Things that were analyzed...</h1>
-    {% set selected = queries[0] %}
-    <form>
-        <fieldset>
-            <select class="combobox input-large">
-              <option value="">Choose a tag</option>
-              {% for q in queries %}
-                <option value="{{q.name}}" {% if q == selected %}class="active"{% endif %}>{{q.tag_name}}</option>
-              {% endfor %}
-            </select>
-        </fieldset>
-    </form>
+    <h1 class="form-inline">Web History of the 
+    {% set selected = queries['img'] %}
+        <select class="combobox input-medium" id="tag_name"></select>
+        tag
+    </h1>
 
+    <!-- Graph Panel -->
+    
+    <h3>
+        View:
+        <select class="input-xxlarge" id="query_options"></select>
+    </h3>
 
-    <!-- Selector Column on left side -->
-<!--     <div class="span3">
-        <div class="well sidebar-nav">
-            <ul class="nav nav-pills nav-stacked">
-                {% set selected = queries[0] %}
-                {% for q in queries %}
-                    <li class="graph_selector{% if q == selected %} active{% endif %}" id="{{q.name}}">
-                        <a  href="#{{q.name}}">{{ q.long_name }}</a>
-                    </li>
-                {% endfor %}
-            </ul>
-        </div>
-    </div> -->
-
-    <!-- Graph Panel on right side -->
-    <div class="span8">
-    <ul class="nav nav-tabs">
-        <li class="active"><a href="#">Home</a></li>
-    </ul>
-    {% for query in queries %}
-            {% include "render_graph.html" %}
-            <script>
-                var api_parameters = "query={{ query.name }}";
-                var queryGraph = render_graph("{{ query.name }}", "{{ query.name }}", api_parameters, true)
-                if("{{query.name}}" !== "{{selected.name}}"){
-                    $("div#chart_container_{{query.name}}").hide();
-                }
-            </script>
-    {% endfor %}
-
+    <div class="chart-tab-body" style="padding: 15px">
+         {% include "render_graph.html" %}
     </div>
     <script type="text/javascript">
-        // Show selected div, hide the others
-        $(".graph_selector").click(function () {
-            $(".history_chart").hide();
-            $(".active").removeClass("active");
-            $(this).addClass("active");
-            $("#chart_container_" + $(this).attr("id")).show();
+        var queries;
+        var queryGraph;
+        var queries_for_selected;
+        var selected_tag;
+        var query_name;
+
+        var loadQueriesForTag = function(new_tag){
+            queries_for_selected = queries[new_tag];
+            $.each(queries_for_selected, function(i, query_type){
+                $('#query_options').append('<option value=' + query_type + '><a href="#' + query_type + '">' + getReadableName(query_type, new_tag) + '</a></li>');
+            });
+            return queries_for_selected[0];
+        };
+
+        var updateQueryGraph = function(new_query){
+            query_name = new_query;
+            api_parameters = "query=" + query_name;
+            queryGraph.dataURL = '/api?'+ api_parameters;
+            queryGraph.request();
+        };
+
+        var getReadableName = function(query_type, tag_name){
+            if(query_type.indexOf('has_') === 0){
+                return "Percent of sites that contain at least one &lt;" + tag_name + '&gt; tag'
+            } else if(query_type.indexOf('num_') === 0){
+                return "Average Number of &lt;" + tag_name + "&gt; tags on a page"
+            } else if(query_type.lastIndexOf('_length') == query_type.length - '_length'.length){
+                return "Average number of characters on a page that are inside a &lt;" + tag_name + "&gt; tag"
+            }
+        };
+
+        // NEW TAG SELECTED: refresh graph and views when new tag is chosen
+        $("#tag_name").change(function () {
+            selected_tag = $("#tag_name option:selected").attr("value");
+            // refresh graph with data from new api call
+            if(selected_tag){  // only do something if selected_tag isn't empty
+                $('#query_options').empty();  // remove view options for previous tag
+                selected_tag = $("#tag_name option:selected").attr("value");
+                var new_query = loadQueriesForTag(selected_tag);
+                updateQueryGraph(new_query);
+            }   
         });
+
+        // View CHANGED: when new query is selected, update view and refresh graph
+        $("#query_options").change(function () {
+            query_name = $("#query_options option:selected").attr("value");
+            console
+            updateQueryGraph(query_name)
+        });
+
+        // load dictionary with list of tags and their queries, and initialize graph/view
+        $.getJSON("/api?query=all").done(function( data ) {
+            queries = data;
+            sorted_tags = [];
+            $.each(queries, function(key, value){
+                sorted_tags.push(key);
+            });
+            sorted_tags = sorted_tags.sort();
+            $.each(sorted_tags, function(i, key) {
+              $('#tag_name').append('<option value="' + key + '">' + key + '</option>');
+            });
+            $('.combobox').combobox();
+
+            selected_tag = $("#tag_name option:selected").attr("value")
+
+            query_name = loadQueriesForTag(selected_tag);
+
+            var api_parameters = "query=" + query_name;
+            queryGraph = render_graph(query_name, query_name, api_parameters, true);            
+        });
+
     </script>
-    <script type="text/javascript">
-  $(document).ready(function(){
-    $('.combobox').combobox();
-  });
-</script>
 </div>
 </div>
 

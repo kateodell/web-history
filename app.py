@@ -2,12 +2,15 @@ from flask import Flask, render_template, request, redirect
 import model
 import json
 
+from pyres import ResQ
+resq = ResQ()
+
 app = Flask(__name__)
 
 
 @app.route('/')
 def index():
-    queries = model.session.query(model.Query).all()
+    queries = model.get_all_queries()  # model.session.query(model.Query).all()
     return render_template("analyze.html", queries=queries)
 
 
@@ -46,8 +49,9 @@ def new_query():
         query_type = request.form['query_type']
         q = model.add_new_query(tag_name, query_type)
         if q:
-            q.run_query_on_all_sites()
-            q.aggregate_for_all_sites()
+            resq.enqueue(model.Query, q.name)
+            # q.run_query_on_all_sites()
+            # q.aggregate_for_all_sites()
         return redirect("/analyze/"+query_type+"_"+tag_name)
 
 @app.route('/about')
@@ -63,7 +67,9 @@ def get_api_data():
 
     # Error handling
     if not query_name:
-        return "ERROR - you must specify a query"
+        return "ERROR - you must specify a query", 400
+    if query_name == "all":
+        return json.dumps(model.get_all_queries())
     query = model.session.query(model.Query).filter_by(name=query_name).first()
     if not query:
             return "ERROR - that query name does not exist", 400
@@ -72,13 +78,13 @@ def get_api_data():
     if url and url != "all":
         site = model.session.query(model.Site).filter_by(url=url).first()
         if not site:
-            return "ERROR - there is no data yet for that url"
+            return "ERROR - there is no data yet for that url", 400
         else:
             site_data = {'data':site.get_data_for_display(query.name), 'name':query.name, 'aggr_format':query.aggr_format}
             aggr_data = { 'data' : query.get_aggregate_data(), 'name':"All Sites"}
             return json.dumps([site_data, aggr_data])
     else:  # if no site is specified, or "all" is specified as site, return aggregate data
-        return json.dumps([{ 'data' : query.get_aggregate_data(), 'name':query.name, 'aggr_format':query.aggr_format}])
+        return json.dumps([{ 'data' : query.get_aggregate_data(), 'name':'All Sites', 'title':query.aggr_format + " " + query.long_name}])
 
 
 if __name__ == "__main__":

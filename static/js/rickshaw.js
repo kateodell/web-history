@@ -1084,7 +1084,6 @@ Rickshaw.Graph.Ajax = Rickshaw.Class.create( {
 
 			var seriesKey = s.key || s.name;
 			if (!seriesKey) throw "series needs a key or a name";
-
 			data.forEach( function(d) {
 
 				var dataKey = d.key || d.name;

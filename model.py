@@ -8,6 +8,7 @@ import time
 from bs4 import BeautifulSoup
 import redis
 
+
 rdb = redis.StrictRedis(host="localhost", port=6379, db=0)
 
 engine = create_engine("postgresql://localhost/webhistory")
@@ -76,11 +77,18 @@ class Query(Base):
     aggr_format = Column(String) # TODO: should this be something else? enum?
     type = Column(String)
     tag_name = Column(String)
+    queue = "Query"
 
     __mapper_args__ = {
         'polymorphic_on': type,
         'polymorphic_identity': 'query'
     }
+
+    def perform(query_name):
+        print "processing query for:", query_name
+        q = session.query(Query).filter_by(name=query_name).one()
+        q.run_query_on_all_sites()
+        q.aggregate_for_all_sites()
 
     def run_query_on_all_sites(self):
         captures = session.query(Capture).all()
@@ -216,7 +224,7 @@ class LengthQuery(Query):
         self.type = 'length'
         self.long_name = 'Number of characters in  <' + tag_name + '> tags'
         self.aggr_format = 'Average'
-        self.tag_name = tag_name    
+        self.tag_name = tag_name 
 
     def calculate_query(self, capture, soup):
         result = len(capture.raw_text)
@@ -224,6 +232,13 @@ class LengthQuery(Query):
 
     def calculate_aggr(self, data):
         return sum(data)/len(data)
+
+def get_all_queries():
+    tags_hash = rdb.hgetall("tag_names_hash")
+    for tag in tags_hash.keys():
+        tags_hash[tag] = tags_hash[tag].split(",")
+    return tags_hash
+
 
 def add_new_query(tag_name, query_type):
     q = session.query(Query).filter_by(name=query_type+'_'+tag_name).first()
@@ -235,6 +250,10 @@ def add_new_query(tag_name, query_type):
         q = HasTagQuery(tag_name)
     elif query_type == 'length':
         q = LengthQuery(tag_name)
+    #  add new query to the tag_names_hash
+    if not rdb.hsetnx("tag_names_hash", tag_name, q.name):
+        temp = rdb.hget("tag_names_hash", q.tag_name) + "," + q.name
+        rdb.hset("tag_names_hash", q.tag_name, temp)
     session.add(q)
     session.commit()
     return q

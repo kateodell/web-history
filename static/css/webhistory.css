@@ -1,0 +1,24 @@
+h1 input[type="text"]{
+    font-size: 20px;
+    vertical-align: middle;
+}
+
+h1 li{
+    font-size: 20px;
+    vertical-align: middle;
+}
+
+.form-inline .combobox-container {
+    vertical-align: middle;
+}
+
+.chart-tab-body{
+    padding: 15px;
+    border-left: 1px solid #ddd;
+    border-right: 1px solid #ddd;
+    border-bottom: 1px solid #ddd;
+}
+
+.nav {
+    margin-bottom: 0px;
+}
