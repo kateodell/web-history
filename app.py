@@ -11,7 +11,7 @@ app = Flask(__name__)
 @app.route('/')
 def index():
     queries = model.get_all_queries()  # model.session.query(model.Query).all()
-    return render_template("analyze.html", queries=queries)
+    return render_template("analyze.html")
 
 
 @app.route('/sites')
@@ -31,7 +31,7 @@ def display_site(site_name):
 @app.route('/analyze')
 def display_all_queries():
     queries = model.session.query(model.Query).all()
-    return render_template("analyze.html", queries=queries)
+    return render_template("analyze.html")
 
 
 @app.route('/analyze/<query_name>')

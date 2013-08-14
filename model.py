@@ -84,7 +84,8 @@ class Query(Base):
         'polymorphic_identity': 'query'
     }
 
-    def perform(query_name):
+    @classmethod
+    def perform(cls, query_name):
         print "processing query for:", query_name
         q = session.query(Query).filter_by(name=query_name).one()
         q.run_query_on_all_sites()
