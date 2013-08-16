@@ -1,4 +1,4 @@
-function render_aggr_graph(selected_name, api_parameters){
+function render_aggr_graph(selected_name, api_parameters, callback){
     var ajaxGraph = new Rickshaw.Graph.Ajax( {
         element: document.getElementById("chart"),
         height: 300,
@@ -28,7 +28,7 @@ function render_aggr_graph(selected_name, api_parameters){
                     return y.toFixed(2) + " %";
                 }
                 return y === null ? y : y.toFixed(2);
-            }
+            };
 
             var hoverDetail = new Rickshaw.Graph.HoverDetail( {
                 graph: graph,
@@ -47,6 +47,8 @@ function render_aggr_graph(selected_name, api_parameters){
             var shelving = new Rickshaw.Graph.Behavior.Series.Toggle( {
                 graph: graph
             } );
+            callback(transport);
+            console.log(transport);
         },
         series:
             [
@@ -56,7 +58,7 @@ function render_aggr_graph(selected_name, api_parameters){
                 }
             ]
     } );
-    return ajaxGraph;
+    //return ajaxGraph;
 }
 
 function render_site_graph(selected_name, site_name, api_parameters){
@@ -74,8 +76,8 @@ function render_site_graph(selected_name, site_name, api_parameters){
                     return y.toFixed(2) + " %";
                 }
                 return y === null ? y : y.toFixed(2);
-            }
-          
+            };
+
             var hoverDetail = new Rickshaw.Graph.HoverDetail( {
                 graph: graph,
                 yFormatter: y_format

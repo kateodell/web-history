@@ -33,9 +33,23 @@ This app is written in Python using the Flask framework.
 
 The app contains an API route that returns a JSON string of the data points needed to display a specific query in a Rickshaw graph.
 
+If a user triggers a new query to be calculated, the app uses Pyres to enqueue the job and process it asynchronously. 
+
 
 Front End (static/templates folders)
 -------------------------------------
 
 Flask template pages, jQuery, [Rickshaw.js](http://code.shutterstock.com/rickshaw/) for displaying the graphs.
 
+To display each chart, the page makes a request to my api and renders the graph using the JSON string returned. The user can select different tags/sites and the graph will update dynamically via ajax.
+
+Next Steps
+-------------
+
+* There are additional types of queries that would be interesting, such as stacked bar charts to show the breakdown of different image or video types, the rise & fall of various Javascript libraries (such as jQuery)
+* When viewing the aggregated graphs, list which sites make up the various segments
+* When viewing a specific site's data, link back to the Wayback Machine's capture of that page for each timestamp
+* Add annotations for each tag's graph showing any relevant info/events (i.e. tag was deprecated in HTML5)
+* Improve processing time when calculating new queries
+* Run analysis on each site to determine how "on-trend" a site is overall (i.e. ahead of the curve, lagging behind, or middle of the pack)
+* Categorize sites to see how different sectors compare (i.e. tech companies vs. news-media vs. government)

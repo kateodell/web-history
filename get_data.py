@@ -74,6 +74,8 @@ def get_one_capture(url, timestamp):
         result = requests.get(request_url, allow_redirects=False)
         urls_requested = { request_url:True }  # track urls we already tried to prevent infinite redirect loops
         while result.status_code == 301 or result.status_code == 302:  # follow the redirect
+            urls_requested[request_url] = True
+            print "redirected from", request_url
             redirect = result.headers.get('Location')
             # TODO: handle infinite redirect loops!
             if re.search(r'^/web/', redirect):
@@ -84,8 +86,8 @@ def get_one_capture(url, timestamp):
                 request_url = build_request_url(timestamp, url + redirect)
             else:
                 request_url = build_request_url(timestamp, redirect)
-            print "redirected to ", request_url
-            if urls_requested.get(request_url):
+            print "redirected to", request_url
+            if not urls_requested.get(request_url):
                 result = requests.get(request_url, allow_redirects=False)
             else:
                 print "Detected infinite redirect loop, DID NOT CAPTURE"

@@ -27,7 +27,7 @@ class Site(Base):
 
     def add_capture(self, timestamp, raw_text):
         dt = datetime(year=int(timestamp[0:4]), month=int(timestamp[4:6]),
-                      day=int(timestamp[6:8]), hour=int(timestamp[8:10]),
+                      day=int(timestamp[6:8]), hour=int(timestamp[8:10])%24,
                       minute=int(timestamp[10:12]), second=int(timestamp[12:14]))
         c = Capture(site_id=self.id, captured_on=dt, raw_text=raw_text)
         session.add(c)
