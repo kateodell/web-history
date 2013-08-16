@@ -10,7 +10,6 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    queries = model.get_all_queries()  # model.session.query(model.Query).all()
     return render_template("analyze.html")
 
 
@@ -18,7 +17,7 @@ def index():
 def display_sites():
     sites = model.session.query(model.Site).all()
     urls = [s.url for s in sites]
-    return render_template("sites.html", urls=urls)
+    return render_template("sites.html", urls=sorted(urls))
 
 
 @app.route('/sites/<site_name>')
@@ -30,7 +29,6 @@ def display_site(site_name):
 
 @app.route('/analyze')
 def display_all_queries():
-    queries = model.session.query(model.Query).all()
     return render_template("analyze.html")
 
 
@@ -40,7 +38,7 @@ def display_query(query_name):
     return render_template("query_data.html", query=query)
 
 
-@app.route('/new_query', methods=['GET','POST'])
+@app.route('/new_query', methods=['GET', 'POST'])
 def new_query():
     if request.method == 'GET':
         return render_template("new_query.html")
@@ -50,20 +48,18 @@ def new_query():
         q = model.add_new_query(tag_name, query_type)
         if q:
             resq.enqueue(model.Query, q.name)
-            # q.run_query_on_all_sites()
-            # q.aggregate_for_all_sites()
-        return redirect("/analyze/"+query_type+"_"+tag_name)
+        return redirect("/analyze#"+query_type+"_"+tag_name)
+
 
 @app.route('/about')
 def display_about():
     return render_template('about.html')
 
+
 @app.route('/api')
 def get_api_data():
     url = request.args.get("site")
     query_name = request.args.get("query")
-    # TODO add ability to specify a result format (avg, median, % that contain, etc)
-    #result = request.args.get("result")
 
     # Error handling
     if not query_name:
@@ -80,11 +76,11 @@ def get_api_data():
         if not site:
             return "ERROR - there is no data yet for that url", 400
         else:
-            site_data = {'data':site.get_data_for_display(query.name), 'name':query.name, 'aggr_format':query.aggr_format}
-            aggr_data = { 'data' : query.get_aggregate_data(), 'name':"All Sites"}
+            site_data = {'data':site.get_data_for_display(query.name), 'name':url, 'aggr_format':query.aggr_format}
+            aggr_data = { 'data' : query.get_aggregate_data(), 'name': "All Sites"}
             return json.dumps([site_data, aggr_data])
     else:  # if no site is specified, or "all" is specified as site, return aggregate data
-        return json.dumps([{ 'data' : query.get_aggregate_data(), 'name':'All Sites', 'title':query.aggr_format + " " + query.long_name}])
+        return json.dumps([{ 'data' : query.get_aggregate_data(), 'name': 'All Sites', 'title':query.aggr_format + " " + query.long_name}])
 
 
 if __name__ == "__main__":

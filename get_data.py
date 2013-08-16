@@ -9,16 +9,18 @@ RAW_DATA = "./raw_data/"
 
 
 #  given a text file, read in list of sites and grab data for each
-def process_sites_from_file(filename):
+def process_sites_from_file(filename, ask_to_overwrite=False):
     lines = open(filename).read().splitlines()
     for line in lines:
         print "Getting all captures from", line
-        get_and_save_captures(line)
+        get_and_save_captures(line, ask_to_overwrite)
+    model.reaggregate_all_queries()
+
 
 
 #  given a url, save all captures we want into a directory of that site's name
 #  TODO: should the timestamp/capture getting and creation be a method for Site?
-def get_and_save_captures(url):
+def get_and_save_captures(url, ask_to_overwrite=False):
     dates = get_just_desired_dates(url)
 
     #  don't do anything if there are no dates results
@@ -32,12 +34,16 @@ def get_and_save_captures(url):
     if not os.path.exists(path):
         os.makedirs(path)
     else:
-        answer = raw_input('There is already a directory for this site. Replace? (y or n)-->')
-        if answer == "n":  # don't do anything else if n
+        if ask_to_overwrite:
+            answer = raw_input('There is already a directory for this site. Replace? (y or n)-->')
+            if answer == "n":  # don't do anything else if n
+                return
+            else:               # if y, delete all capture files
+                print "deleting existing captures and replacing with new ones."
+                delete_files_in_dir(path)
+        else:
+            print "there is already a directory for %s. skipping to next." % path
             return
-        else:               # if y, delete all capture files
-            print "deleting existing captures and replacing with new ones."
-            delete_files_in_dir(path)
 
     site = model.add_or_refresh_site(dir_name)
 
@@ -49,7 +55,8 @@ def get_and_save_captures(url):
             new_file.write(page)  # TODO: IS this the right thing to do for encoding?!?!
             new_file.close()
             #  add capture to database
-            site.add_capture(d, page)
+            capture = site.add_capture(d, page)
+            capture.process_all_queries()
 
 
 def delete_files_in_dir(path):
@@ -65,9 +72,10 @@ def get_one_capture(url, timestamp):
     try:
         # print "REQUEST URL IS ", request_url
         result = requests.get(request_url, allow_redirects=False)
+        urls_requested = { request_url:True }  # track urls we already tried to prevent infinite redirect loops
         while result.status_code == 301 or result.status_code == 302:  # follow the redirect
             redirect = result.headers.get('Location')
-            # print "REDIRECT IS", redirect
+            # TODO: handle infinite redirect loops!
             if re.search(r'^/web/', redirect):
                 request_url = "http://web.archive.org" + redirect
             elif re.search(r'^http://(www.)?archive\.org/web/', redirect):
@@ -76,7 +84,12 @@ def get_one_capture(url, timestamp):
                 request_url = build_request_url(timestamp, url + redirect)
             else:
                 request_url = build_request_url(timestamp, redirect)
-            result = requests.get(request_url, allow_redirects=False)
+            print "redirected to ", request_url
+            if urls_requested.get(request_url):
+                result = requests.get(request_url, allow_redirects=False)
+            else:
+                print "Detected infinite redirect loop, DID NOT CAPTURE"
+                return None
         if result.status_code != 200:  # don't save anything except a 200 response
             print "STATUS CODE IS NOT 200. IT IS", result.status_code, "for", request_url, "\n\n"
             return None
@@ -131,6 +144,39 @@ def get_all_dates(url):
 
 ## CLEAN-UP functions - below were used to clean up things in the database
 ##   NOTE: Will need to import model before running these.
+
+def remove_query_from_everything(query_name):
+    # remove from redis
+    remove_tag_from_redis(query_name)
+    # remove from postgres
+    q = model.session.query(model.Query).filter_by(name=query_name).first()
+    model.session.delete(q)
+    model.session.commit()
+    # update tag_names_hash
+    model.recalculate_tag_names()
+
+def update_y_values_for_has_queries():
+    has_queries = model.rdb.keys(pattern="*has_*")
+    for key in has_queries:
+        print "updating", key
+        fields = model.rdb.hkeys(key)
+        for field in fields:
+            new_val = 100 * float(model.rdb.hget(key, field))
+            if new_val <= 100:
+                model.rdb.hset(key, field, new_val)
+
+
+def remove_tag_from_redis(tag_name):
+    keys = model.rdb.keys(pattern='*'+tag_name+'*')
+    for key in keys:
+        model.rdb.delete(key)
+    print "deleted %d keys for %s" % (len(keys), tag_name)
+
+def rename_tag_in_redis(old_tag, new_tag):
+    keys = model.rdb.keys(pattern='*'+old_tag+'*')
+    for key in keys:
+        new_key = re.sub(old_tag, new_tag, key)
+        model.rdb.renamenx(key, new_key)
 
 def clean_url_no_http():
     for s in model.session.query(model.Site).all():

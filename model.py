@@ -13,8 +13,8 @@ rdb = redis.StrictRedis(host="localhost", port=6379, db=0)
 
 engine = create_engine("postgresql://localhost/webhistory")
 session = scoped_session(sessionmaker(bind=engine,
-                                        autocommit=False,
-                                        autoflush=False))
+                                      autocommit=False,
+                                      autoflush=False))
 Base = declarative_base()
 Base.query = session.query_property()
 
@@ -27,11 +27,12 @@ class Site(Base):
 
     def add_capture(self, timestamp, raw_text):
         dt = datetime(year=int(timestamp[0:4]), month=int(timestamp[4:6]),
-                        day=int(timestamp[6:8]), hour=int(timestamp[8:10]),
-                        minute=int(timestamp[10:12]), second=int(timestamp[12:14]))
+                      day=int(timestamp[6:8]), hour=int(timestamp[8:10]),
+                      minute=int(timestamp[10:12]), second=int(timestamp[12:14]))
         c = Capture(site_id=self.id, captured_on=dt, raw_text=raw_text)
         session.add(c)
         session.commit()
+        return c
 
     def clear_all_captures(self):
         map(session.delete, self.captures)
@@ -47,7 +48,7 @@ class Site(Base):
         dates = sorted(map(int, data.keys()))
         json_data = []
         for coord in dates:
-            json_data.append({'x': int(coord), 'y': int(data[str(coord)])})
+            json_data.append({'x': int(coord), 'y': float(data[str(coord)])})
         return json_data
 
 
@@ -105,7 +106,7 @@ class Query(Base):
         x = int(time.mktime(capture.captured_on.timetuple()))
         rdb.hset(key, x, y)
 
-    #  wipes existing aggregate data, and recalculates. default is to calculate the avg
+    #  wipes existing aggregate data, and recalculates.
     def aggregate_for_all_sites(self):
         self.reset_aggregate()
         keys = rdb.keys('*:'+self.name)
@@ -142,7 +143,7 @@ class Query(Base):
             year, quarter = coord[0].split(":")
             month = (int(quarter) % 4)*3 + 1
             x = int(time.mktime(datetime(int(year), month, 1).timetuple()))
-            result.append({'x':x, 'y':float(coord[1])})
+            result.append({'x': x, 'y': float(coord[1])})
         return sorted(result, key=lambda coord: coord['x'])
 
     def get_quarter_and_year(self, date_str):
@@ -152,7 +153,7 @@ class Query(Base):
 
     def date_from_quarter_int(self, x):
         year = 1996+(x/4)
-        month = 1+(x%4)*3
+        month = 1 + (x%4) * 3
         return int(time.mktime(datetime(year, month, 1).timetuple()))
 
     #  deletes all aggregate data for this query
@@ -172,11 +173,6 @@ class CountTagQuery(Query):
         self.long_name = 'Number of <' + tag_name + '> tags'
         self.aggr_format = 'Average'
         self.tag_name = tag_name
-        # #super(CountTagQuery, self).__init__(name=name, 
-        #                                     long_name=long_name, 
-        #                                     aggr_format=aggr_format,
-        #                                     tag_name=tag_name,
-        #                                     type=type)
 
     def calculate_query(self, capture, soup=None):
         if not soup:
@@ -189,6 +185,7 @@ class CountTagQuery(Query):
     def calculate_aggr(self, data):
         return sum(data)/len(data)
 
+
 class HasTagQuery(Query):
     __mapper_args__ = {
         'polymorphic_identity': 'has_tag'
@@ -199,20 +196,20 @@ class HasTagQuery(Query):
         self.type = 'has_tag'
         self.long_name = 'Contain one or more <' + tag_name + '> tag'
         self.aggr_format = 'Percent of sites that'
-        self.tag_name = tag_name    
+        self.tag_name = tag_name
 
     def calculate_query(self, capture, soup=None):
         if not soup:
             soup = BeautifulSoup(capture.raw_text, "lxml")
         tag_list = soup.find(self.tag_name)
         if tag_list:
-            result = 1
+            result = 100
         else:
             result = 0
         super(HasTagQuery, self).calculate_query(capture, result)
 
     def calculate_aggr(self, data):
-        return 100 * sum(data) / len(data)
+        return sum(data) / len(data)
 
 
 class LengthQuery(Query):
@@ -225,7 +222,7 @@ class LengthQuery(Query):
         self.type = 'length'
         self.long_name = 'Number of characters in  <' + tag_name + '> tags'
         self.aggr_format = 'Average'
-        self.tag_name = tag_name 
+        self.tag_name = tag_name
 
     def calculate_query(self, capture, soup):
         result = len(capture.raw_text)
@@ -233,6 +230,16 @@ class LengthQuery(Query):
 
     def calculate_aggr(self, data):
         return sum(data)/len(data)
+
+
+# HELPER FUNCTIONS
+
+def reaggregate_all_queries():
+    print "reaggregating all queries"
+    queries = session.query(Query).all()
+    for q in queries:
+        q.aggregate_for_all_sites()
+
 
 def get_all_queries():
     tags_hash = rdb.hgetall("tag_names_hash")
@@ -252,12 +259,23 @@ def add_new_query(tag_name, query_type):
     elif query_type == 'length':
         q = LengthQuery(tag_name)
     #  add new query to the tag_names_hash
-    if not rdb.hsetnx("tag_names_hash", tag_name, q.name):
-        temp = rdb.hget("tag_names_hash", q.tag_name) + "," + q.name
-        rdb.hset("tag_names_hash", q.tag_name, temp)
+    add_query_to_tag_names(q)
     session.add(q)
     session.commit()
     return q
+
+def add_query_to_tag_names(query):
+    if not rdb.hsetnx("tag_names_hash", query.tag_name, query.name):
+        temp = rdb.hget("tag_names_hash", query.tag_name) + "," + query.name
+        rdb.hset("tag_names_hash", query.tag_name, temp)
+
+
+def recalculate_tag_names():
+    rdb.delete("tag_names_hash")
+    queries = session.query(Query).all()
+    for q in queries:
+        add_query_to_tag_names(q)
+
 
 #  Given a url, either add it to the sites table, or update it if it already exists
 def add_or_refresh_site(url):

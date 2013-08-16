@@ -2038,6 +2038,7 @@ Rickshaw.Graph.Legend = function(args) {
 
 	element.classList.add('rickshaw_legend');
 
+
 	var list = this.list = document.createElement('ul');
 	element.appendChild(list);
 

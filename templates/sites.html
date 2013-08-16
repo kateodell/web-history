@@ -1,12 +1,38 @@
-{% extends "base.html" %}
+{% extends "analyze.html" %}
 
-{% block content %}
+{% block graph_controls %}
+<h1 class="form-inline">History of the 
+    <select class="combobox input-medium" id="tag_name"></select>
+    tag on 
+    <select class="combobox input-large" id="site_name">
+        {% for site in urls %}
+            <option value="{{site}}">{{site}}</option>
+        {% endfor %}
+    </select>
+</h1>
+{% endblock %}
 
-<h3>Analyzed Sites...</h3>
-<ul>
-    {% for site in urls %}
-    <li><a href="/sites/{{site}}">{{ site }}</a></li>
-    {% endfor %}
-</ul>
+
+{% block create_graph %}
+    site_name = $("#site_name option:selected").attr("value") || "";
+    queryGraph = render_site_graph(query_name, site_name, getApiParameters());
+{% endblock %}
+
+
+{% block api_parameters %}
+    var site_name = $("#site_name option:selected").attr("value") || "";
+    var api_parameters = "query=" + query_name + "&site=" + site_name;
+{% endblock %}
+
+
+{% block javascript_updates %}
+    // NEW SITE SELECTED: refresh graph
+    $("#site_name").change(function () {
+        site_name = $("#site_name option:selected").attr("value") || false;
+        if(site_name){
+            queryGraph.graph.series[0].name = site_name;
+            updateQueryGraph(query_name);
+        }
+    });
 
 {% endblock %}

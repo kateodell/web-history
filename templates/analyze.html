@@ -13,10 +13,12 @@
 
 <div class="container-fluid">
 <div class="row-fluid">
-    <h1 class="form-inline">Web History of the 
+    {% block graph_controls %}
+    <h1 class="form-inline">History of the 
         <select class="combobox input-medium" id="tag_name"></select>
         tag
     </h1>
+    {% endblock %}
 
     <!-- Graph Panel -->
     
@@ -34,19 +36,32 @@
         var queries_for_selected;
         var selected_tag;
         var query_name;
+        var site_name;
 
-        var loadQueriesForTag = function(new_tag){
+        var loadQueriesForTag = function(new_tag, curr_hash){
             queries_for_selected = queries[new_tag];
+            var selected_query = 0;
             $.each(queries_for_selected, function(i, query_type){
                 $('#query_options').append('<option value=' + query_type + '><a href="#' + query_type + '">' + getReadableName(query_type, new_tag) + '</a></li>');
+                if(query_type == curr_hash){
+                    selected_query = i;
+                    $("#query_options option[value='"+query_type+"']").prop("selected", true);
+                }
             });
-            return queries_for_selected[0];
+            return queries_for_selected[selected_query];
         };
 
+        var getApiParameters = function(){
+            {% block api_parameters %}
+            var api_parameters = "query=" + query_name;
+            {% endblock %}
+            return api_parameters;
+        }
+
         var updateQueryGraph = function(new_query){
+            $('#legend').empty();
             query_name = new_query;
-            api_parameters = "query=" + query_name;
-            queryGraph.dataURL = '/api?'+ api_parameters;
+            queryGraph.dataURL = '/api?'+ getApiParameters();
             queryGraph.request();
         };
 
@@ -75,9 +90,11 @@
         // View CHANGED: when new query is selected, update view and refresh graph
         $("#query_options").change(function () {
             query_name = $("#query_options option:selected").attr("value");
-            console
             updateQueryGraph(query_name)
         });
+
+        {% block javascript_updates %}
+        {% endblock %}
 
         // load dictionary with list of tags and their queries, and initialize graph/view
         $.getJSON("/api?query=all").done(function( data ) {
@@ -88,16 +105,26 @@
             });
             sorted_tags = sorted_tags.sort();
             $.each(sorted_tags, function(i, key) {
-              $('#tag_name').append('<option value="' + key + '">' + key + '</option>');
+              $('#tag_name').append('<option value="' + key + '">&lt;' + key + '&gt;</option>');
             });
+
+            // if there's a hash tag,load the correct tag/query to start
+            var curr_hash;
+            if(window.location.hash){
+                curr_hash = window.location.hash.substring(1);
+                selected_tag = curr_hash.substring(curr_hash.indexOf('_')+1);
+                if (queries[selected_tag]){
+                    $("#tag_name option[value='"+selected_tag+"']").prop("selected", true);
+                }
+            }
+
             $('.combobox').combobox();
 
-            selected_tag = $("#tag_name option:selected").attr("value")
-
-            query_name = loadQueriesForTag(selected_tag);
-
-            var api_parameters = "query=" + query_name;
-            queryGraph = render_graph(query_name, query_name, api_parameters, true);            
+            selected_tag = $("#tag_name option:selected").attr("value");
+            query_name = loadQueriesForTag(selected_tag, curr_hash);
+            {% block create_graph %}
+            queryGraph = render_aggr_graph(query_name, getApiParameters());
+            {% endblock %}
         });
 
     </script>
