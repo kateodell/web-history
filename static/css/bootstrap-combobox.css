@@ -91,12 +91,12 @@
 .form-inline .combobox-container .add-on {
   vertical-align: middle;
 }
-.combobox-selected .combobox-clear {
+/*.combobox-selected .combobox-clear {
   display: inline-block;
 }
 .combobox-selected .caret {
   display: none;
-}
+}*/
 .combobox-clear {
   display: none;
   width: 14px;

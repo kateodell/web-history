@@ -100,6 +100,7 @@
       this.clearTarget()
       this.triggerChange()
       this.clearElement()
+      this.lookup()
     } else {
       if (this.shown) {
         this.hide()
