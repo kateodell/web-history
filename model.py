@@ -141,7 +141,7 @@ class Query(Base):
         data = rdb.hgetall(key).items()
         for coord in data:
             year, quarter = coord[0].split(":")
-            month = (int(quarter) % 4)*3 + 1
+            month = (int(quarter) - 1)*3 + 1
             x = int(time.mktime(datetime(int(year), month, 1).timetuple()))
             result.append({'x': x, 'y': float(coord[1])})
         return sorted(result, key=lambda coord: coord['x'])

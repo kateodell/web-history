@@ -14,9 +14,9 @@
 <div class="container-fluid">
 <div class="row-fluid">
     {% block graph_controls %}
-    <h1 class="form-inline">History of the 
+    <h1 class="form-inline">History of the <
         <select class="combobox input-medium" id="tag_name"></select>
-        tag
+        > tag
     </h1>
     {% endblock %}
 
@@ -84,13 +84,15 @@
                 selected_tag = $("#tag_name option:selected").attr("value");
                 var new_query = loadQueriesForTag(selected_tag);
                 updateQueryGraph(new_query);
+                window.location.hash = selected_tag;
             }   
         });
 
         // View CHANGED: when new query is selected, update view and refresh graph
         $("#query_options").change(function () {
             query_name = $("#query_options option:selected").attr("value");
-            updateQueryGraph(query_name)
+            updateQueryGraph(query_name);
+            window.location.hash = query_name;
         });
 
         {% block javascript_updates %}
@@ -105,7 +107,7 @@
             });
             sorted_tags = sorted_tags.sort();
             $.each(sorted_tags, function(i, key) {
-              $('#tag_name').append('<option value="' + key + '">&lt;' + key + '&gt;</option>');
+              $('#tag_name').append('<option value="' + key + '">' + key + '</option>');
             });
 
             // if there's a hash tag,load the correct tag/query to start

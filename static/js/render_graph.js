@@ -29,6 +29,8 @@ function render_aggr_graph(selected_name, api_parameters, callback){
             var y_format = function(y){
                 if(query_name.indexOf('has_') === 0){
                     return y.toFixed(2) + " %";
+                } else if(query_name.indexOf('num_') === 0){
+                    return y === null ? y : y.toFixed(2) + " &lt;" + selected_tag + "&gt; tags";
                 }
                 return y === null ? y : y.toFixed(2);
             };
@@ -85,6 +87,8 @@ function render_site_graph(selected_name, site_name, api_parameters){
             var y_format = function(y){
                 if(query_name.indexOf('has_') === 0){
                     return y.toFixed(2) + " %";
+                } else if(query_name.indexOf('num_') === 0){
+                    return y === null ? y : y.toFixed(2) + " &lt;" + selected_tag + "&gt; tags";
                 }
                 return y === null ? y : y.toFixed(2);
             };
