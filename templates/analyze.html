@@ -122,16 +122,13 @@
 
             selected_tag = $("#tag_name option:selected").attr("value");
             query_name = loadQueriesForTag(selected_tag, curr_hash);
-            try{
-                {% block create_graph %}
-                render_aggr_graph(query_name, getApiParameters(), function(graph){
-                    console.log(self);
-                    queryGraph = graph;
-                });
-                {% endblock %}
-            }catch(err){
-                console.log("there is no data: " + err)
-            }
+
+            {% block create_graph %}
+            render_aggr_graph(query_name, getApiParameters(), function(graph){
+                queryGraph = graph;
+            });
+            {% endblock %}
+
         });
 
     </script>

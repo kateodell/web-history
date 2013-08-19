@@ -5,6 +5,9 @@ function render_aggr_graph(selected_name, api_parameters, callback){
         renderer: 'unstackedarea',
         dataURL: '/api?'+ api_parameters,
         onData: function(d) {return d; },
+        onError: function(error){
+            console.log("ERROR!!!!! omg.")
+        },
         onComplete: function(transport) {
             var graph = transport.graph;
             var format = function(n) {
@@ -48,7 +51,16 @@ function render_aggr_graph(selected_name, api_parameters, callback){
                 graph: graph
             } );
             callback(transport);
-            console.log(transport);
+
+            //hide chart if empty and show spinner
+            if(queryGraph.graph.series[0].data.length == 1 && queryGraph.graph.series[0].data[0].x == 0 && queryGraph.graph.series[0].data[0].y == 0){
+                $("#chart").hide();
+                $("#loading_spinner").show();
+            }
+            else{
+                $("#chart").show();
+                $("#loading_spinner").hide();
+            }
         },
         series:
             [
@@ -58,7 +70,6 @@ function render_aggr_graph(selected_name, api_parameters, callback){
                 }
             ]
     } );
-    //return ajaxGraph;
 }
 
 function render_site_graph(selected_name, site_name, api_parameters){

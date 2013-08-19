@@ -445,8 +445,9 @@ Rickshaw.Graph = function(args) {
 
 		var pointsCount;
 
+        
 		series.forEach( function(s) {
-
+            if(s.data.length > 0){
 			if (!(s instanceof Object)) {
 				throw "series element is not an object: " + s;
 			}
@@ -463,9 +464,11 @@ Rickshaw.Graph = function(args) {
 			if (typeof x != 'number' || ( typeof y != 'number' && y !== null ) ) {
 				throw "x and y properties of points should be numbers instead of " +
 					(typeof x) + " and " + (typeof y);
-			}
-
+			
+        }
+        }
 		}, this );
+
 	};
 
 	this.dataDomain = function() {
@@ -1065,11 +1068,15 @@ Rickshaw.Graph.Ajax = Rickshaw.Class.create( {
 	success: function(data, status) {
 
 		data = this.onData(data);
+
+        //NOTE: Kate added this check to bypass errors for empty data sets.
+        if(data[0].data.length == 0){
+            data[0].data = [{x: 0, y: 0}];
+        }
+
 		this.args.series = this._splice({ data: data, series: this.args.series });
-        
 		this.graph = this.graph || new Rickshaw.Graph(this.args);
 		this.graph.render();
-
 		this.onComplete(this);
 	},
 
