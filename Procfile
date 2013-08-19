@@ -1,1 +1,1 @@
-web: werkzeug app:app
+web: python app.py
