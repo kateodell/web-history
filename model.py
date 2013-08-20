@@ -7,11 +7,18 @@ from datetime import datetime
 import time
 from bs4 import BeautifulSoup
 import redis
+import os
+import urlparse
 
 
-rdb = redis.StrictRedis(host="localhost", port=6379, db=0)
+rdb_url = urlparse.urlparse(os.environ.get('REDISCLOUD_URL', "http://localhost:6379"))
+rdb = redis.StrictRedis(host=rdb_url.hostname, port=rdb_url.port, db=0)
+print rdb_url.hostname
+print rdb_url.port
 
-engine = create_engine("postgresql://localhost/webhistory")
+db_url = os.environ.get("HEROKU_POSTGRESQL_RED_URL", "postgresql://localhost/webhistory")
+engine = create_engine(db_url)
+
 session = scoped_session(sessionmaker(bind=engine,
                                       autocommit=False,
                                       autoflush=False))

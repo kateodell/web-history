@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect
 import model
 import json
+import os
 
 from pyres import ResQ
 resq = ResQ()
@@ -84,4 +85,6 @@ def get_api_data():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    print port
+    app.run(debug=True, port=port)
