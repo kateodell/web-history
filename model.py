@@ -13,8 +13,6 @@ import urlparse
 
 rdb_url = urlparse.urlparse(os.environ.get('REDISCLOUD_URL', "http://localhost:6379"))
 rdb = redis.StrictRedis(host=rdb_url.hostname, port=rdb_url.port, db=0)
-print rdb_url.hostname
-print rdb_url.port
 
 db_url = os.environ.get("HEROKU_POSTGRESQL_RED_URL", "postgresql://localhost/webhistory")
 engine = create_engine(db_url)
