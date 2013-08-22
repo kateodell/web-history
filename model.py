@@ -12,7 +12,7 @@ import urlparse
 
 
 rdb_url = urlparse.urlparse(os.environ.get('REDISCLOUD_URL', "http://localhost:6379"))
-rdb = redis.StrictRedis(host=rdb_url.hostname, port=rdb_url.port, db=0)
+rdb = redis.StrictRedis(host=rdb_url.hostname, port=rdb_url.port, db=0, password=rdb_url.password)
 
 db_url = os.environ.get("HEROKU_POSTGRESQL_RED_URL", "postgresql://localhost/webhistory")
 engine = create_engine(db_url)
@@ -80,7 +80,7 @@ class Query(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True)       # short variableized vesion of name, used for getting calc function
     long_name = Column(String)  # print-friendly version of query name
-    aggr_format = Column(String) # TODO: should this be something else? enum?
+    aggr_format = Column(String)
     type = Column(String)
     tag_name = Column(String)
     queue = "Query"
